@@ -119,7 +119,8 @@ milliseconds and with no API calls. It showed the trade-off curve (0.90: 68% sav
 questions it saved 32%, close to the sweep's prediction, but 3 of 23 answers were worse:
 - a Python function, routed just under the threshold;
 - a US tax question, which the gate didn't flag as high-stakes;
-- a borderline one-line rewrite.
+- a one-line rewrite. Checked by hand, this one was a strict grade, not a bad answer: Nova wrote
+  "We can't proceed with the request now." So 2 of the 3 are real failures.
 
 The perfect score was partly overfitting, and I'd rather publish the held-out number. The
 fixes I'd try next are a rule sending code and tax/legal/medical questions to the large model,

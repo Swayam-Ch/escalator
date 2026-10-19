@@ -154,7 +154,9 @@ prediction of about 30%), but quality didn't hold perfectly. Three cheap answers
 worse than Haiku's:
 - a Python bracket-matching function: code again, routed just under the threshold;
 - a US home-office tax question: the gate didn't flag it as high-stakes;
-- a one-line sentence rewrite: a borderline judgement by the grader.
+- a one-line sentence rewrite. Checked by hand, Nova's answer ("We can't proceed with the request
+  now.") is fine; the judge marked it down because Haiku's own answer also offered a shorter
+  version. So 2 of the 3 are real failures.
 
 Two of the three repeat v1's lesson: a 2B classifier can say whether code or advice *looks*
 complete, not whether it's right. Natural next steps, not yet measured:

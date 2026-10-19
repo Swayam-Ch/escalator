@@ -11,14 +11,12 @@ rules page for the final wording and the deadline (sources disagree: Oct 23 or O
 | At least one reusable decision pattern | README "The reusable decision pattern", `escalator/patterns.py`, `examples/minimal_cascade.py` | Done |
 | Builder Center article | `docs/ARTICLE.md` (draft) | To publish |
 | Demo video under 3 minutes | `docs/DEMO_SCRIPT.md` | To record |
-| Measured latency or cost improvement (bonus) | `bench/reported/`, README Results | Done (v1, v2); held-out run to add |
+| Measured latency or cost improvement (bonus) | `bench/reported/`, README Results | Done (v1, v2, held-out) |
 
 ## Before submitting
 
-- [ ] Run the held-out set and save it:
-      `python bench/run_bench.py --judge --questions bench/holdout.jsonl`, then copy its
-      `summary.md` and `results.jsonl` to `bench/reported/holdout-haiku-*`.
-- [ ] Add the held-out numbers to the README Results and the article's caveats paragraph.
+- [x] Run the held-out set and add it to the README and the article.
+- [ ] Save its files to `bench/reported/holdout-haiku-*` and push them.
 - [ ] Record the video (`docs/DEMO_SCRIPT.md`); upload it (YouTube unlisted is fine) and link it
       in the README and the article.
 - [ ] Publish the article on Builder Center. Upload `docs/tradeoff.png` as an image there, because

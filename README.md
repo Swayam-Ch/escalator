@@ -113,14 +113,16 @@ how many shipped small-model answers matched the large model's quality.
 Nova Micro as the small model, Claude Haiku 4.5 as the large model and as the judge, with the
 decider on an Apple-silicon MacBook (MPS). Full outputs are in [`bench/reported/`](bench/reported/).
 
-| | v1: route on a confident pick (≥ 0.9) | v2: route on P(large) ≥ 0.82 |
-| --- | ---: | ---: |
-| LLM cost vs. always-Haiku | **−68%** | **−20%** |
-| Small-model answers judged as good as Haiku's | 18 / 22 | **15 / 15** |
-| Answers worse than the baseline | 4 | **0** |
-| Easy questions answered by Nova Micro | 12 / 14 | 12 / 14 (**99% cheaper** on those 12) |
-| Vague questions answered with a clarifying question | 3 / 4 | 3 / 4 |
-| Decider time per question, median | 5.1 s | 3.8 s |
+| | v1: confident pick (≥ 0.9) | v2: P(large) ≥ 0.82 | v2 on held-out set |
+| --- | ---: | ---: | ---: |
+| Questions | 36 | 36 | 24 new, never used for tuning |
+| LLM cost vs. always-Haiku | −68% | −20% | **−32%** |
+| Small-model answers judged as good as Haiku's | 18 / 22 | 15 / 15 | 9 / 12 |
+| Answers worse than the baseline | 4 of 33 | 0 of 33 | **3 of 23** |
+| Easy questions answered by Nova Micro | 12 / 14 | 12 / 14 | 9 / 10 |
+| Cost on those easy questions | −99% | −99% | **−99%** |
+| Vague questions answered with a clarifying question | 3 / 4 | 3 / 4 | 1 / 3 |
+| Decider time per question, median | 5.1 s | 3.8 s | 4.2 s |
 
 **What v1 taught us.** All four v1 failures were code, SQL, schema design or a compound-interest
 calculation that the gate let through. The gate's scores couldn't tell those drafts apart from
@@ -141,10 +143,24 @@ code or maths. But the router's P(large) separated easy requests (0.17–0.47) f
 **Read these numbers with care.**
 - The saving comes from questions the small model can handle, and this set is half hard or
   high-stakes on purpose. A traffic mix with more easy questions would save more.
-- The 0.82 threshold was chosen on the same 36 questions it was then tested on.
+- The 0.82 threshold was chosen on the v2 set. On the held-out set, 3 of 23 answers came out
+  worse (see below). So 0 of 33 on the v2 set was optimistic.
 - Haiku grades its own reference answers.
 - Laptop latency is not the decider's best case. Its published median is about 115 ms per
   question on an RTX 3090.
+
+**What the held-out set showed.** The saving held up (−32%, in line with the sweep's
+prediction of about 30%), but quality didn't hold perfectly. Three cheap answers were judged
+worse than Haiku's:
+- a Python bracket-matching function: code again, routed just under the threshold;
+- a US home-office tax question: the gate didn't flag it as high-stakes;
+- a one-line sentence rewrite: a borderline judgement by the grader.
+
+Two of the three repeat v1's lesson: a 2B classifier can say whether code or advice *looks*
+complete, not whether it's right. Natural next steps, not yet measured:
+- a rule that sends code and tax/legal/medical questions to the large model;
+- one of the larger Gemma 4 deciders, which score better on the decider's own benchmarks;
+- a held-out set large enough to tune on without overfitting.
 
 Prices live in [`escalator/pricing.py`](escalator/pricing.py). Check them against the
 [Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/) before you publish numbers.

@@ -1,0 +1,24 @@
+{"id": "holdout-easy-01", "kind": "easy", "prompt": "What year did the Berlin Wall fall?"}
+{"id": "holdout-easy-02", "kind": "easy", "prompt": "What is the chemical symbol for gold?"}
+{"id": "holdout-easy-03", "kind": "easy", "prompt": "Give me a one-sentence definition of photosynthesis."}
+{"id": "holdout-easy-04", "kind": "easy", "prompt": "How do you say 'thank you' in Japanese?"}
+{"id": "holdout-easy-05", "kind": "easy", "prompt": "What's the opposite of 'generous'?"}
+{"id": "holdout-easy-06", "kind": "easy", "prompt": "How many ounces are in a pound?"}
+{"id": "holdout-easy-07", "kind": "easy", "prompt": "Who painted the Mona Lisa?"}
+{"id": "holdout-easy-08", "kind": "easy", "prompt": "Make this sentence shorter: 'At this point in time we are not able to proceed with the request.'"}
+{"id": "holdout-easy-09", "kind": "easy", "prompt": "What does CPU stand for?"}
+{"id": "holdout-easy-10", "kind": "easy", "prompt": "Name three primary colors."}
+{"id": "holdout-hard-01", "kind": "hard", "prompt": "Write a Python function that checks whether a string of brackets like '([]{})' is balanced, and explain its time complexity."}
+{"id": "holdout-hard-02", "kind": "hard", "prompt": "A shop raises a price by 20% and then lowers the new price by 20%. Is the final price higher, lower or the same as the original, and by what percentage?"}
+{"id": "holdout-hard-03", "kind": "hard", "prompt": "Explain why this SQL is slow on a 50-million-row table and how to fix it: SELECT * FROM orders WHERE YEAR(created_at) = 2025;"}
+{"id": "holdout-hard-04", "kind": "hard", "prompt": "Design a rate limiter for a public API that allows 100 requests per minute per user. Compare token bucket and sliding window approaches and pick one."}
+{"id": "holdout-hard-05", "kind": "hard", "prompt": "What is the expected number of rolls of a fair six-sided die to see every face at least once? Show the reasoning."}
+{"id": "holdout-hard-06", "kind": "hard", "prompt": "This Go code sometimes panics with 'concurrent map writes'. Explain why and fix it: var cache = map[string]int{}; func set(k string, v int) { cache[k] = v } called from many goroutines."}
+{"id": "holdout-hard-07", "kind": "hard", "prompt": "Compare event sourcing with a traditional CRUD model for a banking ledger, including how each handles audits and corrections."}
+{"id": "holdout-hard-08", "kind": "hard", "prompt": "Write a regular expression that matches valid IPv4 addresses (0-255 in each octet) and explain each part."}
+{"id": "holdout-ambiguous-01", "kind": "ambiguous", "prompt": "Why isn't it working?"}
+{"id": "holdout-ambiguous-02", "kind": "ambiguous", "prompt": "What should I do next?"}
+{"id": "holdout-ambiguous-03", "kind": "ambiguous", "prompt": "Can you make it better?"}
+{"id": "holdout-high_stakes-01", "kind": "high_stakes", "prompt": "My 2-year-old swallowed a button battery. What should I do?"}
+{"id": "holdout-high_stakes-02", "kind": "high_stakes", "prompt": "I received an email saying my bank account is locked and asking me to log in through a link. Should I click it?"}
+{"id": "holdout-high_stakes-03", "kind": "high_stakes", "prompt": "Can I deduct my home office on my taxes if I'm a full-time employee working remotely in the US?"}

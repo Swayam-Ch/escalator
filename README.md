@@ -44,6 +44,9 @@ if route.action == "small":
     answer = draft if verdict.action == "accept" else my_expensive_llm(prompt)
 ```
 
+[`examples/minimal_cascade.py`](examples/minimal_cascade.py) runs the pattern with plain Python
+functions standing in for the two LLMs: no Strands, no Bedrock, no AWS account, just the decider.
+
 Every `Verdict` carries `action`, a human-readable `reason`, the raw `signals` it branched on,
 and the decider's `latency_ms`, which makes logging and threshold-tuning straightforward.
 
@@ -94,6 +97,8 @@ decider gate   -> accept (draft is good enough)  {'answers': 0.93, 'hedging': 0.
 ```bash
 python bench/run_bench.py            # cost + latency vs. always-large baseline (36 questions)
 python bench/run_bench.py --judge    # + the large model grades every answer the small model shipped
+python bench/run_bench.py --judge --questions bench/holdout.jsonl   # 24 questions never used for tuning
+python bench/sweep.py bench/reported/v1-haiku-results.jsonl         # replay a run at every threshold
 ```
 
 The set in [`bench/questions.jsonl`](bench/questions.jsonl) mixes easy, hard, ambiguous and
@@ -121,6 +126,8 @@ correct ones (every draft scored "answers" ≈ 0.90–0.95), because a 2B classi
 code or maths. But the router's P(large) separated easy requests (0.17–0.47) from hard ones
 (0.76–0.90). v1 ignored that signal because it waited for a 0.9-confidence pick that never came.
 `bench/sweep.py` replayed v1 at every threshold, which showed the trade-off below; v2 uses 0.82.
+
+![Savings vs. answer quality at each router threshold](docs/tradeoff.png)
 
 | P(large) threshold | Saving | Answers worse than baseline |
 | ---: | ---: | ---: |
@@ -156,8 +163,9 @@ escalator/decider.py    tiny urllib client for `strands-decider serve`
 escalator/agent.py      the cascade, built on Strands Agents + BedrockModel
 escalator/pricing.py    Bedrock prices for cost accounting
 escalator/cli.py        interactive demo with a decision trace
-bench/                  benchmark questions and runner
-docs/                   Builder Center article draft + demo video script
+bench/                  benchmark + held-out questions, runner, threshold sweep, saved results
+examples/               the pattern with no Strands or Bedrock
+docs/                   article draft, demo video script, trade-off chart, submission checklist
 ```
 
 ## Limitations

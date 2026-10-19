@@ -208,3 +208,13 @@ def test_sweep_moves_high_p_large_questions_to_the_large_model():
     tuned = replay(rows, 0.82)
     assert tuned["worse"] == [] and tuned["shipped_small"] == 1
     assert tuned["cost"] == pytest.approx(0.00001 + 0.004)
+
+
+def test_minimal_example_runs_without_aws():
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "examples"))
+    from minimal_cascade import answer
+
+    accepted = answer("capital of France?", TierRouter(FakeDecider()), AdequacyGate(FakeDecider()))
+    assert accepted == "Paris."
+    rejected = answer("q", TierRouter(FakeDecider()), AdequacyGate(FakeDecider(answers=0.2)))
+    assert rejected.startswith("(a careful expert answer")

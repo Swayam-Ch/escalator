@@ -27,12 +27,38 @@ Escalator asks it two things on every turn:
    Is it hedging? Is the request high-stakes? How good is it, from 0 to 3? If any check fails,
    escalate.
 
-The model classifies, and ordinary Python decides. [Show `AdequacyGate.check` here.]
+The model classifies, and ordinary Python decides. The whole gate policy is a few `if`s over
+numbers the decider returns in one request:
+
+```python
+a = self.decider.ask(state, GATE_QUESTIONS)   # 3 yes/no questions + 1 rubric score, one round trip
+if a["high_stakes"]["noul"] > p.max_high_stakes:
+    return Verdict(ESCALATE, "high-stakes request", signals, latency)
+if a["answers"]["noul"] < p.min_answers:
+    return Verdict(ESCALATE, "draft does not fully answer", signals, latency)
+if a["hedging"]["noul"] > p.max_hedging:
+    return Verdict(ESCALATE, "draft is hedging", signals, latency)
+if a["quality"]["score"] < p.min_quality:
+    return Verdict(ESCALATE, "draft quality below bar", signals, latency)
+return Verdict(ACCEPT, "draft is good enough", signals, latency)
+```
+
+Because the verdict is a number, the agent can't argue its way past it, and every decision is
+logged with the exact scores that caused it.
 
 ## Building it with Strands Agents and Bedrock
 
-[Show `bedrock_call`: a stateless `Agent(model=BedrockModel(...))`, with token usage read from
-`result.metrics.accumulated_usage` for exact cost accounting.]
+Both tiers are ordinary Strands agents on Amazon Bedrock. Token usage comes straight from the
+agent's metrics, so every cost in this article is measured, not estimated:
+
+```python
+model = BedrockModel(model_id=model_id, region_name="us-east-1")
+agent = Agent(model=model, system_prompt=system_prompt, callback_handler=None)
+result = agent(prompt)
+usage = result.metrics.accumulated_usage   # inputTokens / outputTokens -> USD via pricing.py
+```
+
+The decider runs locally with `strands-decider serve`, so its decisions cost nothing per call.
 
 ## Results
 
@@ -50,6 +76,8 @@ Claude Haiku 4.5 as the large model and the judge.
 - **Hard questions mostly go straight to Haiku in v2,** so they cost the same as the baseline
   but never pay for a wasted draft.
 - **Vague questions:** 3 of 4 got a clarifying question instead of a guess.
+
+![Savings vs. answer quality at each router threshold](tradeoff.png)
 - **Latency is the price on a laptop.** The decider added a median of 3.8 s per question on my
   MacBook (two decisions). The published figure is about 115 ms per decision on an RTX 3090.
 
@@ -87,4 +115,4 @@ milliseconds and with no API calls. It showed the trade-off curve (0.90: 68% sav
 **Caveats:** the threshold was tuned on the same 36 questions, and Haiku grades its own
 reference answers. [If you ran a held-out set, add it here.]
 
-Code: [repo link] · Video: [link] · `#strands-decider-2b`
+Code: https://github.com/Swayam-Ch/escalator · Video: [link] · `#strands-decider-2b`

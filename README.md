@@ -6,6 +6,8 @@
 
 ▶ **Demo video (under 3 min): https://youtu.be/PtXiIiXiwM4**
 
+📝 **Builder Center article: [Escalator: let a 2B decision model decide when your agent needs the bigger LLM](https://builder.aws.com/post/3Kv1OQQQLOMoGHuLHIIp4OkN3O1_h/escalator-let-a-2b-decision-model-decide-when-your-agent-needs-the-bigger-llm)**
+
 Most questions people ask an assistant are easy. Sending all of them to a large model is
 like routing every support ticket to your principal engineer. Escalator puts a ~2B decision
 model (Strands Decider 2B, running locally at no per-call cost) in front of two Bedrock

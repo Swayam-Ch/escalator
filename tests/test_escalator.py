@@ -186,4 +186,4 @@ def test_bench_summary_renders():
          "escalator_cost": 0.0102, "baseline_ms": 6000, "escalator_ms": 6800, "decider_ms": 250, "judge_pass": None},
     ]
     text = summarise(rows)
-    assert "$0.0140" in text and "1/1 small-model answers" in text
+    assert "$0.014000" in text and "1/1 small-model answers" in text

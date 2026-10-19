@@ -23,6 +23,15 @@ from escalator.agent import LARGE_MODEL, SYSTEM_PROMPT, Escalator, bedrock_call 
 from escalator.decider import Decider  # noqa: E402
 from escalator.patterns import AdequacyGate, TierRouter  # noqa: E402
 
+# Not from the benchmark set. The first decider request at a new input length is slow on a Mac
+# (kernel compilation), so these run before timing starts and the table measures steady state.
+WARMUP = [
+    "hi",
+    "What is the tallest mountain in Africa?",
+    "Write a function that merges two sorted lists, and explain how it handles duplicates "
+    "and empty inputs. Then give its time and space complexity with a short justification.",
+]
+
 JUDGE_PROMPT = (
     "You grade answers. Given a QUESTION, a REFERENCE answer from an expert model and a "
     "CANDIDATE answer, reply with exactly one word: PASS if the candidate is correct and "
@@ -59,7 +68,7 @@ def summarise(rows: list[dict]) -> str:
         f"{len(rows)} questions. Baseline = every question answered by `{LARGE_MODEL}`.", "",
         "| | Always-large baseline | Escalator | Change |",
         "| --- | ---: | ---: | ---: |",
-        f"| Total LLM cost | ${base_cost:.4f} | ${esc_cost:.4f} | "
+        f"| Total LLM cost | ${base_cost:.6f} | ${esc_cost:.6f} | "
         f"{(esc_cost - base_cost) / base_cost:+.0%} |",
         f"| Median latency | {statistics.median(base_lat):.0f} ms | {statistics.median(esc_lat):.0f} ms | "
         f"{(statistics.median(esc_lat) - statistics.median(base_lat)) / statistics.median(base_lat):+.0%} |",
@@ -97,8 +106,15 @@ def main() -> int:
     questions = questions[: args.limit] if args.limit else questions
 
     decider = Decider()
-    decider.health()
+    health = decider.health()
+    print(f"decider: {health.get('checkpoint', '?')} on {health.get('device', '?')}")
     escalator = Escalator(TierRouter(decider), AdequacyGate(decider))
+
+    print("warming up the decider...", end=" ", flush=True)
+    for prompt in WARMUP:
+        escalator.router.route(prompt)
+        escalator.gate.check(prompt, "Here is a short draft answer to the request above.")
+    print(f"done ({decider.last_latency_ms:.0f} ms for the last call)\n")
     out_dir = ROOT / "bench" / "results" / time.strftime("%Y%m%d-%H%M%S")
     out_dir.mkdir(parents=True)
 

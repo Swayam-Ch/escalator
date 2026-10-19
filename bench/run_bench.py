@@ -102,6 +102,8 @@ def main() -> int:
     parser.add_argument("--limit", type=int)
     parser.add_argument("--large-at", type=float, default=TierRouter.large_at,
                         help="router P(large) threshold (default %(default)s)")
+    parser.add_argument("--no-expert", action="store_true",
+                        help="turn off the v3 code/calculation/advice question (the v2 router)")
     args = parser.parse_args()
 
     questions = [json.loads(line) for line in args.questions.read_text().splitlines() if line.strip()]
@@ -110,8 +112,11 @@ def main() -> int:
     decider = Decider()
     health = decider.health()
     print(f"decider: {health.get('checkpoint', '?')} on {health.get('device', '?')}")
-    escalator = Escalator(TierRouter(decider, large_at=args.large_at), AdequacyGate(decider))
-    print(f"router: P(large) >= {args.large_at} goes straight to the large model")
+    expert_at = None if args.no_expert else TierRouter.expert_at
+    escalator = Escalator(TierRouter(decider, large_at=args.large_at, expert_at=expert_at),
+                          AdequacyGate(decider))
+    print(f"router: P(large) >= {args.large_at} goes straight to the large model"
+          + ("" if expert_at is None else f"; so does P(code/calculation/advice) >= {expert_at}"))
 
     print("warming up the decider...", end=" ", flush=True)
     for prompt in WARMUP:

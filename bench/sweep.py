@@ -16,10 +16,12 @@ import sys
 from pathlib import Path
 
 
-def replay(rows: list[dict], large_at: float) -> dict:
+def replay(rows: list[dict], large_at: float, expert_at: float | None = None) -> dict:
     cost, shipped_small, worse = 0.0, 0, []
     for r in rows:
-        moves_large = r["path"] in {"direct-small", "escalated"} and r["route"].get("p_large", 0) >= large_at
+        expert = expert_at is not None and r["route"].get("p_expert", 0) >= expert_at
+        moves_large = r["path"] in {"direct-small", "escalated"} and (
+            r["route"].get("p_large", 0) >= large_at or expert)
         if moves_large:
             cost += r["baseline_cost"]
             continue

@@ -53,31 +53,51 @@ ROUTE_QUESTION = choice(
     },
 )
 
+# v3: asked in the same decider call as the tier choice. The held-out set showed that the gate
+# cannot judge code or advice, so requests of that kind skip the small model altogether.
+EXPERT_QUESTION = noul(
+    "Does this request ask for code to be written or debugged, a multi-step calculation, or "
+    "advice on tax, law, medicine or money?",
+    true="it asks for code, a calculation with several steps, or professional advice",
+    false="it asks for a fact, a definition, a simple conversion, a rewrite or casual help",
+)
+
 
 @dataclass
 class TierRouter:
     """Pick a tier before spending any LLM tokens.
 
-    A confident CLARIFY asks the user first; a high enough P(large) skips the cheap draft.
-    Everything else goes to the small model, whose draft the AdequacyGate then checks.
+    A confident CLARIFY asks the user first. A high enough P(large), or a request for code,
+    calculation or professional advice, skips the cheap draft. Everything else goes to the
+    small model, whose draft the AdequacyGate then checks.
     """
 
     decider: Asks
-    sure: float = 0.9       # confidence needed to act on a CLARIFY pick
-    large_at: float = 0.82  # P(large) at or above which the large model answers directly
+    sure: float = 0.9                 # confidence needed to act on a CLARIFY pick
+    large_at: float = 0.82            # P(large) at or above which the large model answers directly
+    expert_at: float | None = 0.5     # P(expert request) that does the same; None turns it off (v2)
 
     def route(self, prompt: str) -> Verdict:
-        answer = self.decider.ask(f"User request:\n{prompt}", {"tier": ROUTE_QUESTION})["tier"]
+        questions = {"tier": ROUTE_QUESTION}
+        if self.expert_at is not None:
+            questions["expert"] = EXPERT_QUESTION
+        answers = self.decider.ask(f"User request:\n{prompt}", questions)
+        answer = answers["tier"]
         picked, confidence = answer["choice"], answer["confidence"]
         p_large = answer["probabilities"].get(LARGE, 0.0)
         signals = {f"p_{k}": round(v, 3) for k, v in answer["probabilities"].items()}
         signals["confidence"] = round(confidence, 3)
+        p_expert = answers["expert"]["noul"] if "expert" in answers else None
+        if p_expert is not None:
+            signals["p_expert"] = round(p_expert, 3)
         latency = self.decider.last_latency_ms
 
         if picked == CLARIFY and confidence >= self.sure:
             return Verdict(CLARIFY, "confidently missing information", signals, latency)
         if p_large >= self.large_at:
             return Verdict(LARGE, f"P(large) {p_large:.2f} >= {self.large_at}", signals, latency)
+        if p_expert is not None and p_expert >= self.expert_at:
+            return Verdict(LARGE, f"code, calculation or advice (P {p_expert:.2f})", signals, latency)
         return Verdict(SMALL, f"P(large) {p_large:.2f} < {self.large_at}; small drafts, gate checks",
                        signals, latency)
 

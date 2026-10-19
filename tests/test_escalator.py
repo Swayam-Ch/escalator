@@ -20,9 +20,10 @@ SMALL, LARGE = "us.amazon.nova-micro-v1:0", "us.anthropic.claude-sonnet-4-5-2025
 class FakeDecider:
     """Answers in the server's wire format from a fixed script; records every state."""
 
-    def __init__(self, route=("small", 0.95), answers=0.97, hedging=0.05, high_stakes=0.05, quality=2.7):
-        self.route, self.answers, self.hedging, self.high_stakes, self.quality = (
-            route, answers, hedging, high_stakes, quality)
+    def __init__(self, route=("small", 0.95), answers=0.97, hedging=0.05, high_stakes=0.05, quality=2.7,
+                 expert=0.1):
+        self.route, self.answers, self.hedging, self.high_stakes, self.quality, self.expert = (
+            route, answers, hedging, high_stakes, quality, expert)
         self.states: list[str] = []
         self.last_latency_ms = 100.0
 
@@ -32,7 +33,8 @@ class FakeDecider:
             picked, conf = self.route
             others = [o for o in questions["tier"]["criteria"] if o != picked]
             probs = {picked: conf, **{o: (1 - conf) / len(others) for o in others}}
-            return {"tier": {"type": "choice", "choice": picked, "probabilities": probs, "confidence": conf}}
+            tier = {"type": "choice", "choice": picked, "probabilities": probs, "confidence": conf}
+            return {"tier": tier, **({"expert": {"type": "noul", "noul": self.expert}} if "expert" in questions else {})}
         return {
             "answers": {"type": "noul", "noul": self.answers},
             "hedging": {"type": "noul", "noul": self.hedging},
@@ -69,6 +71,21 @@ def make(decider, models):
 ])
 def test_router_policy(route, expected):
     assert TierRouter(FakeDecider(route=route)).route("q").action == expected
+
+
+def test_router_sends_code_and_advice_to_the_large_model():
+    verdict = TierRouter(FakeDecider(route=("small", 0.9), expert=0.8)).route("write a SQL query")
+    assert verdict.action == "large" and verdict.signals["p_expert"] == 0.8
+
+
+def test_router_expert_question_can_be_turned_off():
+    decider = FakeDecider(route=("small", 0.9), expert=0.8)
+    verdict = TierRouter(decider, expert_at=None).route("write a SQL query")
+    assert verdict.action == "small" and "p_expert" not in verdict.signals
+
+
+def test_clarify_still_wins_over_the_expert_question():
+    assert TierRouter(FakeDecider(route=("clarify", 0.95), expert=0.9)).route("fix it").action == "clarify"
 
 
 def test_router_large_threshold_is_tunable():
@@ -208,6 +225,8 @@ def test_sweep_moves_high_p_large_questions_to_the_large_model():
     tuned = replay(rows, 0.82)
     assert tuned["worse"] == [] and tuned["shipped_small"] == 1
     assert tuned["cost"] == pytest.approx(0.00001 + 0.004)
+    rows[0]["route"]["p_expert"] = 0.7
+    assert replay(rows, 0.82, expert_at=0.5)["shipped_small"] == 0
 
 
 def test_minimal_example_runs_without_aws():

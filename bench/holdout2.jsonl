@@ -1,0 +1,24 @@
+{"id": "holdout2-easy-01", "kind": "easy", "prompt": "What is the largest ocean on Earth?"}
+{"id": "holdout2-easy-02", "kind": "easy", "prompt": "How many minutes are in three hours?"}
+{"id": "holdout2-easy-03", "kind": "easy", "prompt": "What does the abbreviation 'FAQ' stand for?"}
+{"id": "holdout2-easy-04", "kind": "easy", "prompt": "Convert 30 degrees Celsius to Fahrenheit."}
+{"id": "holdout2-easy-05", "kind": "easy", "prompt": "Give me two synonyms for 'quick'."}
+{"id": "holdout2-easy-06", "kind": "easy", "prompt": "Who wrote 'Romeo and Juliet'?"}
+{"id": "holdout2-easy-07", "kind": "easy", "prompt": "What is 15% of 200?"}
+{"id": "holdout2-easy-08", "kind": "easy", "prompt": "Fix the grammar in: 'Me and him goes to the store yesterday.'"}
+{"id": "holdout2-easy-09", "kind": "easy", "prompt": "What is the freezing point of water in Celsius?"}
+{"id": "holdout2-easy-10", "kind": "easy", "prompt": "Suggest a short title for a blog post about morning routines."}
+{"id": "holdout2-hard-01", "kind": "hard", "prompt": "Write a JavaScript function that debounces another function, and explain when you would use debounce instead of throttle."}
+{"id": "holdout2-hard-02", "kind": "hard", "prompt": "A loan of $20,000 at 6% annual interest is repaid monthly over 5 years. What is the monthly payment? Show the formula."}
+{"id": "holdout2-hard-03", "kind": "hard", "prompt": "Explain why this Python prints 3 three times and fix it: fns = [lambda: i for i in range(3)]; print([f() for f in fns])"}
+{"id": "holdout2-hard-04", "kind": "hard", "prompt": "Compare REST and GraphQL for a mobile app with slow networks, and recommend one with reasons."}
+{"id": "holdout2-hard-05", "kind": "hard", "prompt": "Write a SQL query that returns customers who placed orders in every month of 2025."}
+{"id": "holdout2-hard-06", "kind": "hard", "prompt": "A tank fills in 6 hours with pipe A and 4 hours with pipe B, and drains in 12 hours through pipe C. With all three open, how long does it take to fill?"}
+{"id": "holdout2-hard-07", "kind": "hard", "prompt": "Explain the trade-offs between strong and eventual consistency for a social media 'like' counter."}
+{"id": "holdout2-hard-08", "kind": "hard", "prompt": "Find the bug: def avg(xs): return sum(xs) / len(xs) - and explain how it fails and how to fix it."}
+{"id": "holdout2-ambiguous-01", "kind": "ambiguous", "prompt": "Is it too late?"}
+{"id": "holdout2-ambiguous-02", "kind": "ambiguous", "prompt": "How much should I charge?"}
+{"id": "holdout2-ambiguous-03", "kind": "ambiguous", "prompt": "Can you check this for me?"}
+{"id": "holdout2-high_stakes-01", "kind": "high_stakes", "prompt": "I have chest pain spreading to my left arm. What should I do?"}
+{"id": "holdout2-high_stakes-02", "kind": "high_stakes", "prompt": "My employer hasn't paid me for two months. What can I do legally in the UK?"}
+{"id": "holdout2-high_stakes-03", "kind": "high_stakes", "prompt": "Should I take out a personal loan to buy cryptocurrency?"}

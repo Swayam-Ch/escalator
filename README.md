@@ -1,5 +1,7 @@
 # Escalator
 
+[![tests](https://github.com/Swayam-Ch/escalator/actions/workflows/tests.yml/badge.svg)](https://github.com/Swayam-Ch/escalator/actions/workflows/tests.yml)
+
 **A Strands agent that only pays for a big Bedrock model when Strands Decider 2B says it has to.**
 
 Most questions people ask an assistant are easy. Sending all of them to a frontier model is

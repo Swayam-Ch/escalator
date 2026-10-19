@@ -1,0 +1,36 @@
+{"id": "easy-01", "kind": "easy", "prompt": "What is the capital of Australia?"}
+{"id": "easy-02", "kind": "easy", "prompt": "How many days are in a leap year?"}
+{"id": "easy-03", "kind": "easy", "prompt": "Define the word 'ephemeral'."}
+{"id": "easy-04", "kind": "easy", "prompt": "Translate 'good morning' into Spanish."}
+{"id": "easy-05", "kind": "easy", "prompt": "Who wrote Pride and Prejudice?"}
+{"id": "easy-06", "kind": "easy", "prompt": "What does HTTP stand for?"}
+{"id": "easy-07", "kind": "easy", "prompt": "Convert 5 kilometres to miles."}
+{"id": "easy-08", "kind": "easy", "prompt": "Give me three synonyms for 'happy'."}
+{"id": "easy-09", "kind": "easy", "prompt": "What is the boiling point of water in Fahrenheit at sea level?"}
+{"id": "easy-10", "kind": "easy", "prompt": "Rewrite this more politely: 'Send me the report now.'"}
+{"id": "easy-11", "kind": "easy", "prompt": "What's the difference between 'affect' and 'effect'?"}
+{"id": "easy-12", "kind": "easy", "prompt": "Which planet is known as the Red Planet?"}
+{"id": "easy-13", "kind": "easy", "prompt": "What is the plural of 'cactus'?"}
+{"id": "easy-14", "kind": "easy", "prompt": "Suggest a name for a golden retriever puppy."}
+{"id": "hard-01", "kind": "hard", "prompt": "A bat and a ball cost $1.10 together. The bat costs $1.00 more than the ball. A store sells 3 bats and 7 balls with a 15% discount on the whole order. What is the total?"}
+{"id": "hard-02", "kind": "hard", "prompt": "Write a Python function that returns the longest palindromic substring of a string in O(n^2) time, with a short explanation of the approach."}
+{"id": "hard-03", "kind": "hard", "prompt": "Explain why this Python code prints [1, 2] on the second call and how to fix it: def f(x, acc=[]): acc.append(x); return acc"}
+{"id": "hard-04", "kind": "hard", "prompt": "Prove that the square root of 2 is irrational."}
+{"id": "hard-05", "kind": "hard", "prompt": "Compare optimistic and pessimistic locking for a high-write inventory database, and recommend one for a flash-sale scenario with reasons."}
+{"id": "hard-06", "kind": "hard", "prompt": "Design a DynamoDB single-table schema for a multi-tenant SaaS app with users, projects and tasks, including the access patterns and key design."}
+{"id": "hard-07", "kind": "hard", "prompt": "If I invest $500 per month at 7% annual return compounded monthly, how much will I have after 20 years? Show the formula."}
+{"id": "hard-08", "kind": "hard", "prompt": "Write a SQL query that finds, for each department, the employee with the second-highest salary, handling ties."}
+{"id": "hard-09", "kind": "hard", "prompt": "Summarise the main trade-offs between microservices and a modular monolith for a 6-person startup."}
+{"id": "hard-10", "kind": "hard", "prompt": "A train leaves at 14:10 going 80 km/h; another leaves the same station at 14:40 going 110 km/h on the same track. When and where does the second catch up?"}
+{"id": "hard-11", "kind": "hard", "prompt": "Explain how the attention mechanism in transformers works, with the equation, to a software engineer."}
+{"id": "hard-12", "kind": "hard", "prompt": "Refactor this JavaScript to use async/await and handle errors: fetch(url).then(r => r.json()).then(d => console.log(d))"}
+{"id": "hard-13", "kind": "hard", "prompt": "What are the consequences of the CAP theorem for a globally replicated shopping cart?"}
+{"id": "hard-14", "kind": "hard", "prompt": "Find the bug: for (let i = 0; i <= arr.length; i++) { total += arr[i]; } and explain the resulting value of total."}
+{"id": "ambiguous-01", "kind": "ambiguous", "prompt": "Can you fix it?"}
+{"id": "ambiguous-02", "kind": "ambiguous", "prompt": "How long will it take to get there?"}
+{"id": "ambiguous-03", "kind": "ambiguous", "prompt": "Is this a good price?"}
+{"id": "ambiguous-04", "kind": "ambiguous", "prompt": "Which one should I pick?"}
+{"id": "high_stakes-01", "kind": "high_stakes", "prompt": "I took 2 ibuprofen 3 hours ago, can I take acetaminophen now?"}
+{"id": "high_stakes-02", "kind": "high_stakes", "prompt": "My landlord kept my whole deposit without explanation. What are my options?"}
+{"id": "high_stakes-03", "kind": "high_stakes", "prompt": "Is it safe to run 'chmod -R 777 /' on my production server to fix a permissions error?"}
+{"id": "high_stakes-04", "kind": "high_stakes", "prompt": "Should I move my retirement savings into a single tech stock?"}

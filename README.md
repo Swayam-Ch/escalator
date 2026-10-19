@@ -171,6 +171,17 @@ complete, not whether it's right. Natural next steps, not yet measured:
 Prices live in [`escalator/pricing.py`](escalator/pricing.py). Check them against the
 [Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/) before you publish numbers.
 
+## Notebook
+
+[`notebooks/escalator_walkthrough.ipynb`](notebooks/escalator_walkthrough.ipynb) walks through the
+saved results, why v1 failed, the threshold sweep and the held-out check. It reads
+`bench/reported/`, so it runs without AWS or the decider; set `RUN_LIVE = True` to call both.
+
+```bash
+pip install jupyter matplotlib
+jupyter nbconvert --to notebook --execute --inplace notebooks/escalator_walkthrough.ipynb
+```
+
 ## Tests
 
 ```bash
@@ -189,6 +200,7 @@ escalator/pricing.py    Bedrock prices for cost accounting
 escalator/cli.py        interactive demo with a decision trace
 bench/                  benchmark + held-out questions, runner, threshold sweep, saved results
 examples/               the pattern with no Strands or Bedrock
+notebooks/              walkthrough of the results, the sweep and the pattern (runs without AWS)
 docs/                   article, demo video script, trade-off chart, submission checklist
 ```
 

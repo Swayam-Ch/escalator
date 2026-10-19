@@ -73,19 +73,20 @@ def test_router_policy(route, expected):
     assert TierRouter(FakeDecider(route=route)).route("q").action == expected
 
 
-def test_router_sends_code_and_advice_to_the_large_model():
-    verdict = TierRouter(FakeDecider(route=("small", 0.9), expert=0.8)).route("write a SQL query")
+def test_strict_mode_sends_code_and_advice_to_the_large_model():
+    verdict = TierRouter(FakeDecider(route=("small", 0.9), expert=0.8), expert_at=0.5).route("write a SQL query")
     assert verdict.action == "large" and verdict.signals["p_expert"] == 0.8
 
 
-def test_router_expert_question_can_be_turned_off():
+def test_strict_mode_is_off_by_default():
     decider = FakeDecider(route=("small", 0.9), expert=0.8)
-    verdict = TierRouter(decider, expert_at=None).route("write a SQL query")
+    verdict = TierRouter(decider).route("write a SQL query")
     assert verdict.action == "small" and "p_expert" not in verdict.signals
 
 
 def test_clarify_still_wins_over_the_expert_question():
-    assert TierRouter(FakeDecider(route=("clarify", 0.95), expert=0.9)).route("fix it").action == "clarify"
+    router = TierRouter(FakeDecider(route=("clarify", 0.95), expert=0.9), expert_at=0.5)
+    assert router.route("fix it").action == "clarify"
 
 
 def test_router_large_threshold_is_tunable():

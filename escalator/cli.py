@@ -7,7 +7,7 @@ import sys
 
 from .agent import Escalator, Outcome
 from .decider import Decider, ServerUnavailable
-from .patterns import AdequacyGate, TierRouter
+from .patterns import STRICT_EXPERT_AT, AdequacyGate, TierRouter
 
 DIM, BOLD, GREEN, YELLOW, CYAN, RESET = "\033[2m", "\033[1m", "\033[32m", "\033[33m", "\033[36m", "\033[0m"
 
@@ -37,6 +37,7 @@ def main() -> int:
     parser.add_argument("prompt", nargs="*", help="ask once and exit; omit for a REPL")
     parser.add_argument("--sure", type=float, default=TierRouter.sure, help="confidence needed to ask the user to clarify")
     parser.add_argument("--large-at", type=float, default=TierRouter.large_at, help="P(large) that skips the small draft")
+    parser.add_argument("--strict", action="store_true", help="send code, calculations and advice to the large model")
     args = parser.parse_args()
 
     decider = Decider()
@@ -47,7 +48,8 @@ def main() -> int:
         return 1
     print(f"{DIM}decider: {health.get('checkpoint', '?')} on {health.get('device', '?')}{RESET}")
 
-    escalator = Escalator(TierRouter(decider, sure=args.sure, large_at=args.large_at), AdequacyGate(decider))
+    escalator = Escalator(TierRouter(decider, sure=args.sure, large_at=args.large_at,
+                                     expert_at=STRICT_EXPERT_AT if args.strict else None), AdequacyGate(decider))
     if args.prompt:
         print(render(escalator(" ".join(args.prompt))))
         return 0

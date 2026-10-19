@@ -11,7 +11,7 @@ rules page for the final wording and the deadline (sources disagree: Oct 23 or O
 | At least one reusable decision pattern | README "The reusable decision pattern", `escalator/patterns.py`, `examples/minimal_cascade.py` | Done |
 | Builder Center article | https://builder.aws.com/post/3Kv1OQQQLOMoGHuLHIIp4OkN3O1_h/escalator-let-a-2b-decision-model-decide-when-your-agent-needs-the-bigger-llm | Done |
 | Demo video under 3 minutes | https://youtu.be/PtXiIiXiwM4 | Done |
-| Measured latency or cost improvement (bonus) | `bench/reported/`, README Results | Done (v1, v2, held-out) |
+| Measured latency or cost improvement (bonus) | `bench/reported/`, README Results | Done (v1, v2, two held-out sets, v3) |
 
 ## Before submitting
 

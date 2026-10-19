@@ -62,7 +62,8 @@ per the [strands-decider evaluation](https://github.com/strands-labs/strands-dec
 An LLM's self-reported confidence gives you no such guarantee. Each decision is also a single
 forward pass, with no generation and no API bill, so it can sit on the hot path of every request.
 
-**Knobs** (all in code): `TierRouter.large_at` and `TierRouter.sure`, plus `GatePolicy.min_answers`, `max_hedging`,
+**Knobs** (all in code): `TierRouter.large_at`, `TierRouter.sure` and `TierRouter.expert_at`
+(strict mode, off by default), plus `GatePolicy.min_answers`, `max_hedging`,
 `max_high_stakes` and `min_quality`. Raise them to escalate more often (higher quality);
 lower them to save more. `python bench/sweep.py <results.jsonl>` replays a saved benchmark
 run at every router threshold, without new LLM calls, so you can choose `large_at` from data.
@@ -163,10 +164,33 @@ worse than Haiku's:
   version. So 2 of the 3 are real failures.
 
 Two of the three repeat v1's lesson: a 2B classifier can say whether code or advice *looks*
-complete, not whether it's right. Natural next steps, not yet measured:
-- a rule that sends code and tax/legal/medical questions to the large model;
-- one of the larger Gemma 4 deciders, which score better on the decider's own benchmarks;
-- a held-out set large enough to tune on without overfitting.
+complete, not whether it's right.
+
+**v3: a rule for code and advice, tested on a second held-out set.** v3 adds one yes/no question
+to the router's decider call: does the request ask for code, a multi-step calculation, or advice
+on tax, law, medicine or money? If P ≥ 0.5, the large model answers directly. Because that rule
+was designed after seeing the first held-out set, I compared v2 and v3 on 24 more questions that
+neither had seen ([`bench/holdout2.jsonl`](bench/holdout2.jsonl)):
+
+| Second held-out set (24 new questions) | v2 | v3 (strict mode) |
+| --- | ---: | ---: |
+| LLM cost vs. always-Haiku | **−36%** | −11% |
+| Answers worse than the baseline | **0 of 23** | 0 of 23 |
+| Answered by Nova Micro and judged as good | 12 / 12 | 9 / 9 |
+
+v2 made no mistakes on this set, so v3 had nothing to catch. It sent five more questions to
+Haiku: a JavaScript debounce function and a SQL query that Nova Micro had answered correctly,
+two that v2 escalated anyway, and "What is 15% of 200?" at P = 0.51. The question itself
+separates well (easy questions scored 0.04 to 0.12 apart from that one; hard and high-stakes
+ones mostly 0.6 to 0.86), but on this evidence it costs 25 points of savings for no measured
+gain. **v2 stays the default.** v3 is available as strict mode (`TierRouter(expert_at=0.5)`,
+`--strict` on the CLI and benchmark) for products where one wrong answer about code or money
+costs more than the savings.
+
+Across both held-out sets (48 questions), v2 saved 34% with 2 real failures in 46 answers.
+
+Next steps, not yet measured: one of the larger Gemma 4 deciders, which score better on the
+decider's own benchmarks, and a held-out set large enough to tune on without overfitting.
 
 Prices live in [`escalator/pricing.py`](escalator/pricing.py). Check them against the
 [Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/) before you publish numbers.

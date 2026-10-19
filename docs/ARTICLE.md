@@ -121,9 +121,18 @@ new questions it saved 32%, close to what the sweep predicted, but 3 of 23 answe
 - a one-line rewrite. I checked this one by hand, and it was a strict grade rather than a bad
   answer: Nova wrote "We can't proceed with the request now." So 2 of the 3 are real failures.
 
-The perfect score was partly overfitting, and I'd rather publish the held-out number. Next I'd
-try a rule that sends code and tax/legal/medical questions to the large model, and a larger
-Gemma 4 decider. One more caveat on every quality number here: Haiku grades its own reference
-answers.
+The perfect score was partly overfitting, and I'd rather publish the held-out number.
+
+So I tried the obvious fix. v3 adds one yes/no question to the router's call: does the request
+ask for code, a multi-step calculation, or advice on tax, law, medicine or money? If so, Haiku
+answers directly. That rule came from looking at the first held-out set, so I tested v2 and v3
+on a second set of 24 questions neither had seen. v2 saved 36% with 0 worse answers; v3 saved
+11%, also with 0 worse answers. v2 had nothing for v3 to catch, and v3 sent working code
+answers and "What is 15% of 200?" to Haiku. I kept v2 as the default and left v3 in as an
+opt-in strict mode for products where one wrong answer about code or money is expensive.
+Across both held-out sets, v2 saved 34% with 2 real failures in 46 answers.
+
+Next I'd try a larger Gemma 4 decider. One more caveat on every quality number here: Haiku
+grades its own reference answers.
 
 Code: https://github.com/Swayam-Ch/escalator · Video: https://youtu.be/PtXiIiXiwM4 · `#strands-decider-2b`

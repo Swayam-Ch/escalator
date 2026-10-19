@@ -53,8 +53,12 @@ ROUTE_QUESTION = choice(
     },
 )
 
-# v3: asked in the same decider call as the tier choice. The held-out set showed that the gate
-# cannot judge code or advice, so requests of that kind skip the small model altogether.
+# Strict mode (v3), off by default. Asked in the same decider call as the tier choice, it sends
+# code, calculations and professional advice straight to the large model. On a second held-out
+# set it cut the saving from 36% to 11% without catching a single extra bad answer, so use it
+# only where one wrong answer of that kind costs more than the savings.
+STRICT_EXPERT_AT = 0.5
+
 EXPERT_QUESTION = noul(
     "Does this request ask for code to be written or debugged, a multi-step calculation, or "
     "advice on tax, law, medicine or money?",
@@ -67,15 +71,15 @@ EXPERT_QUESTION = noul(
 class TierRouter:
     """Pick a tier before spending any LLM tokens.
 
-    A confident CLARIFY asks the user first. A high enough P(large), or a request for code,
-    calculation or professional advice, skips the cheap draft. Everything else goes to the
-    small model, whose draft the AdequacyGate then checks.
+    A confident CLARIFY asks the user first. A high enough P(large) skips the cheap draft, and
+    so does a request for code, calculation or professional advice in strict mode. Everything
+    else goes to the small model, whose draft the AdequacyGate then checks.
     """
 
     decider: Asks
     sure: float = 0.9                 # confidence needed to act on a CLARIFY pick
     large_at: float = 0.82            # P(large) at or above which the large model answers directly
-    expert_at: float | None = 0.5     # P(expert request) that does the same; None turns it off (v2)
+    expert_at: float | None = None    # strict mode: P(expert request) that does the same
 
     def route(self, prompt: str) -> Verdict:
         questions = {"tier": ROUTE_QUESTION}

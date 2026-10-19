@@ -62,12 +62,17 @@ def make(decider, models):
     (("small", 0.95), "small"),
     (("small", 0.40), "small"),
     (("large", 0.95), "large"),
-    (("large", 0.60), "small"),     # unsure -> cheap draft + gate, not a costly guess
+    (("large", 0.85), "large"),     # P(large) above large_at is enough; no confident pick needed
+    (("large", 0.60), "small"),     # below large_at -> cheap draft + gate
     (("clarify", 0.92), "clarify"),
     (("clarify", 0.70), "small"),
 ])
-def test_router_only_acts_on_confident_answers(route, expected):
+def test_router_policy(route, expected):
     assert TierRouter(FakeDecider(route=route)).route("q").action == expected
+
+
+def test_router_large_threshold_is_tunable():
+    assert TierRouter(FakeDecider(route=("large", 0.85)), large_at=0.9).route("q").action == "small"
 
 
 # ----------------------------------------------------------------------------- gate
@@ -187,3 +192,19 @@ def test_bench_summary_renders():
     ]
     text = summarise(rows)
     assert "$0.014000" in text and "1/1 small-model answers" in text
+
+
+def test_sweep_moves_high_p_large_questions_to_the_large_model():
+    from sweep import replay
+
+    rows = [
+        {"id": "easy", "path": "direct-small", "route": {"p_large": 0.2}, "baseline_cost": 0.001,
+         "escalator_cost": 0.00001, "judge_pass": True},
+        {"id": "hard", "path": "direct-small", "route": {"p_large": 0.86}, "baseline_cost": 0.004,
+         "escalator_cost": 0.00004, "judge_pass": False},
+    ]
+    strict = replay(rows, 0.9)
+    assert strict["worse"] == ["hard"] and strict["shipped_small"] == 2
+    tuned = replay(rows, 0.82)
+    assert tuned["worse"] == [] and tuned["shipped_small"] == 1
+    assert tuned["cost"] == pytest.approx(0.00001 + 0.004)

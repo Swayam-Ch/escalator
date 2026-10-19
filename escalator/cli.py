@@ -35,7 +35,8 @@ def render(outcome: Outcome) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("prompt", nargs="*", help="ask once and exit; omit for a REPL")
-    parser.add_argument("--sure", type=float, default=0.9, help="decider confidence needed to act")
+    parser.add_argument("--sure", type=float, default=TierRouter.sure, help="confidence needed to ask the user to clarify")
+    parser.add_argument("--large-at", type=float, default=TierRouter.large_at, help="P(large) that skips the small draft")
     args = parser.parse_args()
 
     decider = Decider()
@@ -46,7 +47,7 @@ def main() -> int:
         return 1
     print(f"{DIM}decider: {health.get('checkpoint', '?')} on {health.get('device', '?')}{RESET}")
 
-    escalator = Escalator(TierRouter(decider, sure=args.sure), AdequacyGate(decider))
+    escalator = Escalator(TierRouter(decider, sure=args.sure, large_at=args.large_at), AdequacyGate(decider))
     if args.prompt:
         print(render(escalator(" ".join(args.prompt))))
         return 0

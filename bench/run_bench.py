@@ -100,6 +100,8 @@ def main() -> int:
     parser.add_argument("--questions", default=ROOT / "bench" / "questions.jsonl", type=Path)
     parser.add_argument("--judge", action="store_true")
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--large-at", type=float, default=TierRouter.large_at,
+                        help="router P(large) threshold (default %(default)s)")
     args = parser.parse_args()
 
     questions = [json.loads(line) for line in args.questions.read_text().splitlines() if line.strip()]
@@ -108,7 +110,8 @@ def main() -> int:
     decider = Decider()
     health = decider.health()
     print(f"decider: {health.get('checkpoint', '?')} on {health.get('device', '?')}")
-    escalator = Escalator(TierRouter(decider), AdequacyGate(decider))
+    escalator = Escalator(TierRouter(decider, large_at=args.large_at), AdequacyGate(decider))
+    print(f"router: P(large) >= {args.large_at} goes straight to the large model")
 
     print("warming up the decider...", end=" ", flush=True)
     for prompt in WARMUP:

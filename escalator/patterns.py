@@ -10,9 +10,11 @@ Nothing here imports Strands or Bedrock. Drop this file and `decider.py` into an
 the router and gate only need something with an `ask(state, questions)` method.
 
 The decider is calibrated: on unseen short classification tasks, answers at confidence
->= 0.9 are right about 95% of the time (strands-decider evaluation/results.md). So the
-policy below only *acts* on a confident answer and otherwise falls back to the safe,
-cheap-then-check path. The thresholds are knobs owned by your code, not the model.
+>= 0.9 are right about 95% of the time (strands-decider evaluation/results.md). The router
+reads P(large) directly rather than waiting for a confident pick: on our benchmark every
+hard request scored P(large) 0.76-0.90 and every easy one 0.17-0.47, while the gate's scores
+barely separated correct from incorrect code and maths. The thresholds are knobs owned by
+your code, not the model; `bench/sweep.py` replays a benchmark run to choose them.
 """
 
 from __future__ import annotations
@@ -56,28 +58,27 @@ ROUTE_QUESTION = choice(
 class TierRouter:
     """Pick a tier before spending any LLM tokens.
 
-    Only a confident LARGE or CLARIFY changes the default. Everything else goes to the
-    small model, whose draft the AdequacyGate then checks -- so a wrong "small" costs one
-    cheap draft, never a bad answer.
+    A confident CLARIFY asks the user first; a high enough P(large) skips the cheap draft.
+    Everything else goes to the small model, whose draft the AdequacyGate then checks.
     """
 
     decider: Asks
-    sure: float = 0.9
+    sure: float = 0.9       # confidence needed to act on a CLARIFY pick
+    large_at: float = 0.82  # P(large) at or above which the large model answers directly
 
     def route(self, prompt: str) -> Verdict:
         answer = self.decider.ask(f"User request:\n{prompt}", {"tier": ROUTE_QUESTION})["tier"]
         picked, confidence = answer["choice"], answer["confidence"]
+        p_large = answer["probabilities"].get(LARGE, 0.0)
         signals = {f"p_{k}": round(v, 3) for k, v in answer["probabilities"].items()}
         signals["confidence"] = round(confidence, 3)
         latency = self.decider.last_latency_ms
 
-        if picked == LARGE and confidence >= self.sure:
-            return Verdict(LARGE, "confidently needs the expert model", signals, latency)
         if picked == CLARIFY and confidence >= self.sure:
             return Verdict(CLARIFY, "confidently missing information", signals, latency)
-        if picked == SMALL:
-            return Verdict(SMALL, "simple request; small model drafts, gate checks", signals, latency)
-        return Verdict(SMALL, f"unsure ({picked} @ {confidence:.2f}); try small, gate checks",
+        if p_large >= self.large_at:
+            return Verdict(LARGE, f"P(large) {p_large:.2f} >= {self.large_at}", signals, latency)
+        return Verdict(SMALL, f"P(large) {p_large:.2f} < {self.large_at}; small drafts, gate checks",
                        signals, latency)
 
 

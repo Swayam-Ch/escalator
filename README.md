@@ -11,7 +11,7 @@ models and lets it make two calibrated decisions on every turn:
 flowchart LR
     U[User request] --> R{"Decision 1 · ROUTE<br/>(decider choice)"}
     R -- "clarify @ ≥0.9" --> C[Small model asks a<br/>clarifying question]
-    R -- "large @ ≥0.9" --> L[Large model answers]
+    R -- "P(large) ≥ 0.82" --> L[Large model answers]
     R -- "small, or unsure" --> S[Small model drafts]
     S --> G{"Decision 2 · GATE<br/>(3 nouls + 1 score)"}
     G -- accept --> A[Ship the draft]
@@ -20,7 +20,7 @@ flowchart LR
 
 | Decision | Decider question type | Acts when | Otherwise |
 | --- | --- | --- | --- |
-| **Route**: which tier should answer? | `choice` over `small` / `large` / `clarify` | `large` or `clarify` with confidence ≥ 0.9 | cheap draft, then gate |
+| **Route**: which tier should answer? | `choice` over `small` / `large` / `clarify` | P(`large`) ≥ 0.82, or `clarify` with confidence ≥ 0.9 | cheap draft, then gate |
 | **Gate**: is the small model's draft good enough? | `noul` × 3 (answers fully? hedging? high stakes?) + `score` (4-level rubric) | every check passes | escalate to the large model |
 
 The model **classifies**, the code **decides**: each verdict is a number your `if` statements
@@ -37,7 +37,7 @@ from escalator.decider import Decider
 from escalator.patterns import TierRouter, AdequacyGate, GatePolicy
 
 decider = Decider()                                  # http://127.0.0.1:8099
-route = TierRouter(decider, sure=0.9).route(prompt)  # Verdict(action="small"|"large"|"clarify", ...)
+route = TierRouter(decider, large_at=0.82).route(prompt)  # Verdict(action="small"|"large"|"clarify", ...)
 if route.action == "small":
     draft = my_cheap_llm(prompt)
     verdict = AdequacyGate(decider, GatePolicy(min_quality=2.0)).check(prompt, draft)
@@ -53,9 +53,10 @@ per the [strands-decider evaluation](https://github.com/strands-labs/strands-dec
 An LLM's self-reported confidence gives you no such guarantee. Each decision is also a single
 forward pass, with no generation and no API bill, so it can sit on the hot path of every request.
 
-**Knobs** (all in code): `TierRouter.sure`, plus `GatePolicy.min_answers`, `max_hedging`,
+**Knobs** (all in code): `TierRouter.large_at` and `TierRouter.sure`, plus `GatePolicy.min_answers`, `max_hedging`,
 `max_high_stakes` and `min_quality`. Raise them to escalate more often (higher quality);
-lower them to save more.
+lower them to save more. `python bench/sweep.py <results.jsonl>` replays a saved benchmark
+run at every router threshold, without new LLM calls, so you can choose `large_at` from data.
 
 ## Quick start
 

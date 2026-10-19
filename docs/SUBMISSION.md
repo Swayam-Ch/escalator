@@ -9,16 +9,15 @@ rules page for the final wording and the deadline (sources disagree: Oct 23 or O
 | Paired with Amazon Bedrock | `escalator/agent.py`: Strands `Agent` + `BedrockModel` (Nova Micro, Claude Haiku 4.5) | Done |
 | Public code repository | https://github.com/Swayam-Ch/escalator | Done |
 | At least one reusable decision pattern | README "The reusable decision pattern", `escalator/patterns.py`, `examples/minimal_cascade.py` | Done |
-| Builder Center article | `docs/ARTICLE.md` (draft) | To publish |
-| Demo video under 3 minutes | `docs/DEMO_SCRIPT.md` | To record |
+| Builder Center article | `docs/ARTICLE.md` | To publish |
+| Demo video under 3 minutes | https://youtu.be/PtXiIiXiwM4 | Done |
 | Measured latency or cost improvement (bonus) | `bench/reported/`, README Results | Done (v1, v2, held-out) |
 
 ## Before submitting
 
 - [x] Run the held-out set and add it to the README and the article.
 - [ ] Save its files to `bench/reported/holdout-haiku-*` and push them.
-- [ ] Record the video (`docs/DEMO_SCRIPT.md`); upload it (YouTube unlisted is fine) and link it
-      in the README and the article.
+- [x] Record the video, upload it and link it in the README and the article.
 - [ ] Publish the article on Builder Center. Upload `docs/tradeoff.png` as an image there, because
       a relative image path won't work outside GitHub. Add the `#strands-decider-2b` tag.
 - [ ] On GitHub, add the `strands-decider-2b` topic and a one-line description to the repo.

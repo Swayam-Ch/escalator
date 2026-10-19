@@ -1,12 +1,10 @@
-# Escalator: let a 2B decision model decide when your agent needs a frontier LLM
-
-*Draft for the AWS Builder Center. Fill in the remaining [brackets] before publishing.*
+# Escalator: let a 2B decision model decide when your agent needs the bigger LLM
 
 ## The problem
 
 My assistant answered "what's the capital of Australia?" with the same model I'd use to design
-a database schema. Most real traffic is easy, so I was paying frontier-model prices (and
-waiting frontier-model latencies) for answers a model about 30× cheaper gets right.
+a database schema. Most real traffic is easy, so I was paying large-model prices (and
+waiting large-model latencies) for answers a model about 30× cheaper gets right.
 
 The usual fix is a cascade: try a cheap model, escalate if it isn't good enough. The hard part
 is deciding *good enough*. Asking an LLM to grade itself costs another LLM call, adds seconds
@@ -16,19 +14,19 @@ of latency, and gives you prose confidence you can't calibrate.
 
 [Strands Decider 2B](https://github.com/strands-labs/strands-decider) is a decision model: it
 can't generate text, it can only pick options, answer yes/no, or score against a rubric. It
-gives back calibrated probabilities in a single forward pass, with no API bill and no generation.
-That's exactly the shape of the "is this good enough?" question.
+returns calibrated probabilities from a single forward pass, which is what an "is this good
+enough?" check needs.
 
 Escalator asks it two things on every turn:
 
-1. **Route** (`choice`): `small`, `large` or `clarify`? A confident (≥ 0.9) `clarify` asks the
+1. Route (`choice`): `small`, `large` or `clarify`? A confident (≥ 0.9) `clarify` asks the
    user first. P(`large`) ≥ 0.82 skips the cheap draft. Everything else goes to the small model.
-2. **Gate** (3 × `noul` + 1 × `score`): does the small model's draft fully answer the request?
+2. Gate (3 × `noul` + 1 × `score`): does the small model's draft fully answer the request?
    Is it hedging? Is the request high-stakes? How good is it, from 0 to 3? If any check fails,
    escalate.
 
-The model classifies, and ordinary Python decides. The whole gate policy is a few `if`s over
-numbers the decider returns in one request:
+The decider only classifies. The gate policy itself is a few `if`s in plain Python over the
+numbers it returns in one request:
 
 ```python
 a = self.decider.ask(state, GATE_QUESTIONS)   # 3 yes/no questions + 1 rubric score, one round trip
@@ -49,7 +47,7 @@ logged with the exact scores that caused it.
 ## Building it with Strands Agents and Bedrock
 
 Both tiers are ordinary Strands agents on Amazon Bedrock. Token usage comes straight from the
-agent's metrics, so every cost in this article is measured, not estimated:
+agent's metrics, so every cost in this article is based on measured token counts:
 
 ```python
 model = BedrockModel(model_id=model_id, region_name="us-east-1")
@@ -62,7 +60,7 @@ The decider runs locally with `strands-decider serve`, so its decisions cost not
 
 ## Results
 
-36 tuning questions plus 24 held-out questions, each set covering easy, hard, ambiguous and
+I ran 36 tuning questions and 24 held-out questions, each set mixing easy, hard, ambiguous and
 high-stakes requests. Nova Micro is the small model; Claude Haiku 4.5 is the large model and the
 judge.
 
@@ -73,14 +71,14 @@ judge.
 | Answers worse than the baseline | 4 of 33 | 0 of 33 | 3 of 23 |
 | Cost on easy questions | −99% | −99% | −99% |
 
-- **Easy questions are where the money is saved:** in v2, 12 of the 14 went to Nova Micro and
-  all 12 passed the judge, at 99% lower cost on those ($0.000037 against $0.0035).
-- **Hard questions mostly go straight to Haiku in v2,** so they cost the same as the baseline
+- Most of the saving comes from easy questions. In v2, 12 of the 14 went to Nova Micro and all
+  12 passed the judge, at 99% lower cost ($0.000037 against $0.0035).
+- In v2, hard questions mostly go straight to Haiku, so they cost the same as the baseline
   but never pay for a wasted draft.
-- **Vague questions:** 3 of 4 got a clarifying question instead of a guess (1 of 3 on the
+- 3 of the 4 vague questions got a clarifying question back instead of a guess (1 of 3 on the
   held-out set).
-- **Latency is the price on a laptop.** The decider added a median of 3.8 s per question on my
-  MacBook (two decisions). The published figure is about 115 ms per decision on an RTX 3090.
+- On a laptop, the price is latency. The decider added a median of 3.8 s per question (two
+  decisions) on my MacBook. The published figure is about 115 ms per decision on an RTX 3090.
 
 ![Savings vs. answer quality at each router threshold](tradeoff.png)
 
@@ -90,7 +88,9 @@ purpose, so a real assistant, where most questions are easy, would save more.
 ## The reusable pattern: confidence-gated cascade
 
 `escalator/patterns.py` uses only the standard library. Copy it into any agent, point it at
-`strands-decider serve`, and swap in your own models. Tuning tips:
+`strands-decider serve`, and swap in your own models. `examples/minimal_cascade.py` shows the
+whole pattern with plain Python functions in place of the LLMs: no Strands, no Bedrock, no AWS
+account. Tuning tips:
 
 - Start strict (escalate a lot), run the benchmark with `--judge`, then loosen one knob at a time.
 - Write the `true`/`false` criteria descriptions carefully. They do most of the work.
@@ -99,32 +99,31 @@ purpose, so a real assistant, where most questions are easy, would save more.
 
 ## What I learned
 
-**My first policy was wrong, and the data showed why.** v1 saved 68% but shipped four bad
-answers: a DynamoDB schema, a SQL query, a JavaScript refactor and a compound-interest
-calculation. I expected to fix that by tightening the gate. The numbers said otherwise: good
-and bad drafts scored the same ("fully answers" 0.90–0.95, quality around 2.2 of 3). A 2B
-classifier can tell whether a draft *addresses* the question, but it can't check whether code
-runs or the maths adds up.
+My first policy saved 68% but shipped four bad answers: a DynamoDB schema, a SQL query, a
+JavaScript refactor and a compound-interest calculation. I expected to fix that by tightening
+the gate, but good and bad drafts got the same scores ("fully answers" 0.90 to 0.95, quality
+around 2.2 of 3). A 2B classifier can tell whether a draft *addresses* the question. It can't
+check whether code runs or the maths adds up.
 
-**The router had the answer all along.** Its P(large) put every easy question at 0.17–0.47 and
-every hard one at 0.76–0.90. My policy waited for a confident pick (≥ 0.9) that never came, so
-it threw that signal away. Branching on the probability itself, rather than on the pick, fixed
-it.
+The router's probabilities already separated easy from hard. P(large) was 0.17 to 0.47 for
+every easy question and 0.76 to 0.90 for every hard one, but my policy waited for a confident
+pick (≥ 0.9) that never came, so it threw that signal away. v2 branches on the probability
+itself instead of the pick, and that fixed it.
 
-**Replay before you re-run.** `bench/sweep.py` replays a saved run at every threshold in
-milliseconds and with no API calls. It showed the trade-off curve (0.90: 68% saved and 4 worse;
-0.81: 30% saved and 0 worse) before I spent anything on v2.
+Before spending anything on v2, I replayed the saved run with `bench/sweep.py`, which tries
+every threshold in milliseconds without any API calls. That gave me the trade-off curve: 68%
+saved and 4 worse answers at 0.90, 30% saved and 0 worse at 0.81.
 
-**Hold some questions back.** v2 scored 0 bad answers on the questions I tuned it on. On 24 new
-questions it saved 32%, close to the sweep's prediction, but 3 of 23 answers were worse:
+I also held some questions back. v2 scored 0 bad answers on the questions I tuned it on. On 24
+new questions it saved 32%, close to what the sweep predicted, but 3 of 23 answers were worse:
 - a Python function, routed just under the threshold;
 - a US tax question, which the gate didn't flag as high-stakes;
-- a one-line rewrite. Checked by hand, this one was a strict grade, not a bad answer: Nova wrote
-  "We can't proceed with the request now." So 2 of the 3 are real failures.
+- a one-line rewrite. I checked this one by hand, and it was a strict grade rather than a bad
+  answer: Nova wrote "We can't proceed with the request now." So 2 of the 3 are real failures.
 
-The perfect score was partly overfitting, and I'd rather publish the held-out number. The
-fixes I'd try next are a rule sending code and tax/legal/medical questions to the large model,
-and a larger Gemma 4 decider. Haiku also grades its own reference answers, which is a further
-caveat on every quality number here.
+The perfect score was partly overfitting, and I'd rather publish the held-out number. Next I'd
+try a rule that sends code and tax/legal/medical questions to the large model, and a larger
+Gemma 4 decider. One more caveat on every quality number here: Haiku grades its own reference
+answers.
 
-Code: https://github.com/Swayam-Ch/escalator · Video: [link] · `#strands-decider-2b`
+Code: https://github.com/Swayam-Ch/escalator · Video: https://youtu.be/PtXiIiXiwM4 · `#strands-decider-2b`

@@ -4,9 +4,11 @@
 
 **A Strands agent that only pays for a big Bedrock model when Strands Decider 2B says it has to.**
 
-Most questions people ask an assistant are easy. Sending all of them to a frontier model is
+▶ **Demo video (under 3 min): https://youtu.be/PtXiIiXiwM4**
+
+Most questions people ask an assistant are easy. Sending all of them to a large model is
 like routing every support ticket to your principal engineer. Escalator puts a ~2B decision
-model (Strands Decider 2B, running locally, ~100–300 ms per decision) in front of two Bedrock
+model (Strands Decider 2B, running locally at no per-call cost) in front of two Bedrock
 models and lets it make two calibrated decisions on every turn:
 
 ```mermaid
@@ -185,7 +187,7 @@ escalator/pricing.py    Bedrock prices for cost accounting
 escalator/cli.py        interactive demo with a decision trace
 bench/                  benchmark + held-out questions, runner, threshold sweep, saved results
 examples/               the pattern with no Strands or Bedrock
-docs/                   article draft, demo video script, trade-off chart, submission checklist
+docs/                   article, demo video script, trade-off chart, submission checklist
 ```
 
 ## Limitations

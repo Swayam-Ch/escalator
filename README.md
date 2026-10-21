@@ -151,6 +151,9 @@ code or maths. But the router's P(large) separated easy requests (0.17–0.47) f
 - The 0.82 threshold was chosen on the v2 set. On the held-out set, 3 of 23 answers came out
   worse (see below). So 0 of 33 on the v2 set was optimistic.
 - Haiku grades its own reference answers.
+- The large model was Claude Haiku 4.5, a generation behind today's Claude models. Both models
+  are set by environment variables (`ESCALATOR_SMALL_MODEL`, `ESCALATOR_LARGE_MODEL`); I haven't
+  measured the current generation yet.
 - Laptop latency is not the decider's best case. Its published median is about 115 ms per
   question on an RTX 3090.
 

@@ -132,7 +132,8 @@ answers and "What is 15% of 200?" to Haiku. I kept v2 as the default and left v3
 opt-in strict mode for products where one wrong answer about code or money is expensive.
 Across both held-out sets, v2 saved 34% with 2 real failures in 46 answers.
 
-Next I'd try a larger Gemma 4 decider. One more caveat on every quality number here: Haiku
-grades its own reference answers.
+Next I'd try a larger Gemma 4 decider. Two more caveats: Haiku grades its own reference
+answers, and Haiku 4.5 is a generation behind today's Claude models. Both models are set by
+environment variables, but I haven't measured the current generation yet.
 
 Code: https://github.com/Swayam-Ch/escalator · Video: https://youtu.be/PtXiIiXiwM4 · `#strands-decider-2b`

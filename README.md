@@ -317,21 +317,30 @@ python bench/run_tool_bench.py --repeat 3 --models large,verify
 ```
 decider route  -> large  (P(large) 0.92 >= 0.82)
 code check     -> accept  (two runs printed 361105294 and the answer matches)
+  nova-micro-v1: 1213+119 tok, $0.000059, 2473ms, ran code 1x
+  nova-micro-v1: 1201+106 tok, $0.000057, 2516ms, ran code 1x
+
+[nova-micro-v1] The product of 48,917 multiplied by 7,382 is 361,105,294.
 ```
 
-**Replay on the saved runs** (not a live run yet). Pairing up the three Nova Micro + run_python
-answers to each question from `bench/reported/tool-repeat3-results.jsonl`, and using the Claude
-Haiku + run_python answer whenever the check fails:
+The decider sent that question to the large model, and the code check kept it on Nova Micro for
+$0.00012 instead of about $0.002 on Claude Haiku.
 
-| | Correct | Kept on Nova Micro | LLM cost per 18 |
-| --- | ---: | ---: | ---: |
-| Claude Haiku 4.5 + run_python | 18/18 | | $0.0528 |
-| Verify mode (3 pairings) | 18/18 each | 12-13 | $0.0202-0.0239 |
+**Live results**, 18 questions asked 3 times (`--repeat 3 --models large,verify`):
 
-No wrong Nova answer got through in any pairing. Each check caught something real: calc-03 (the
-code printed 13678.52, the answer said 1367852), calc-05 (printed 1111.111, answered 1111), and
-calc-10, calc-13 and calc-17, where the two runs wrote different programs and printed different
-results.
+| | Correct per run | Kept on Nova Micro | LLM cost per run of 18 |
+| --- | :---: | :---: | ---: |
+| Claude Haiku 4.5 + run_python | 18, 18, 18 | | $0.0560 (mean) |
+| Verify mode | 18, 18, 17* | 9, 12, 11 | $0.0271 (mean), 40-62% of Haiku |
+
+No wrong Nova answer was kept in any run. The one miss (*) wasn't a wrong answer: Bedrock
+rejected a Nova tool call ("Model produced invalid sequence as part of ToolUse") and the error
+failed the question. A draft that errors now escalates to the large model instead.
+
+Before the live run, a replay on the saved 3-run results predicted 18/18 at 41% of the cost. The
+checks it made were all real catches: calc-03 (the code printed 13678.52, the answer said
+1367852), calc-05 (printed 1111.111, answered 1111), and calc-10, calc-13 and calc-17, where the
+two runs wrote different programs and printed different results.
 
 ## Notebook
 

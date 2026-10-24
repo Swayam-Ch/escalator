@@ -5,6 +5,7 @@
     python bench/run_tool_bench.py --repeat 3             # ask everything 3 times, report the spread
     python bench/run_tool_bench.py --models escalator     # the whole agent: decider route, model + tool, gate
     python bench/run_tool_bench.py --models verify        # the whole agent in verify mode (tool on only)
+    python bench/run_tool_bench.py --summarise bench/results/tools-<timestamp>   # rebuild summary.md
 
 Every question has an exact answer, so correctness is checked by code, not by an LLM judge.
 `--models escalator` and `verify` need the decider running (see README "Quick start").
@@ -91,7 +92,7 @@ def summarise(rows: list[dict], configs: list[tuple[str, bool]]) -> str:
             f"{statistics.median(r['latency_ms'] for r in mine):.0f} ms | {used} | "
             f"{sum(r['tool_calls'] for r in mine)} | {sum(r['predicted'] is None for r in mine)} |")
     for agent in AGENTS:
-        paths = [(tool, Counter(r["path"] for r in rows if r["model"] == agent and r["tool"] == tool))
+        paths = [(tool, Counter(r["path"] or "error" for r in rows if r["model"] == agent and r["tool"] == tool))
                  for tool in (False, True)]
         if any(c for _, c in paths):
             out += ["", f"{agent} routes: " + "; ".join(
@@ -134,7 +135,15 @@ def main() -> int:
     parser.add_argument("--models", default="small,large", help="comma list of small, large, escalator, verify")
     parser.add_argument("--repeat", type=int, default=1, help="ask every question this many times")
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--summarise", type=Path, help="rebuild summary.md from a saved results folder and exit")
     args = parser.parse_args()
+
+    if args.summarise:
+        rows = [json.loads(line) for line in (args.summarise / "results.jsonl").read_text().splitlines() if line]
+        summary = summarise(rows, list(dict.fromkeys((r["model"], r["tool"]) for r in rows)))
+        (args.summarise / "summary.md").write_text(summary)
+        print(summary)
+        return 0
 
     questions = [json.loads(line) for line in args.questions.read_text().splitlines() if line.strip()]
     questions = questions[: args.limit] if args.limit else questions

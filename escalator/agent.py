@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from . import verify
-from .patterns import ACCEPT, CLARIFY, LARGE, AdequacyGate, TierRouter, Verdict
+from .patterns import ACCEPT, CLARIFY, ESCALATE, LARGE, AdequacyGate, TierRouter, Verdict
 from .pricing import cost_usd
 from .tools import TOOL_HINT, RunBudget
 
@@ -139,11 +139,23 @@ class Escalator:
         """Ask the small model twice, in parallel; keep its answer if the code check passes.
 
         If neither draft ran code, the question wasn't a calculation, so the usual flow applies
-        with the first draft. Otherwise a failed check goes to the large model.
+        with the first draft. Otherwise a failed check goes to the large model, and so does a
+        draft call that errors (Bedrock sometimes rejects a malformed tool call from the model).
         """
+        def draft(_):
+            try:
+                return self.call(self.small_model, SYSTEM_PROMPT, prompt, self.tools)
+            except Exception as exc:
+                return exc
+
         with ThreadPoolExecutor(max_workers=2) as pool:
-            first, second = pool.map(lambda _: self.call(self.small_model, SYSTEM_PROMPT, prompt, self.tools),
-                                     range(2))
+            first, second = pool.map(draft, range(2))
+        failed = [d for d in (first, second) if isinstance(d, Exception)]
+        if failed:
+            check = Verdict(ESCALATE, f"a draft failed: {type(failed[0]).__name__}")
+            drafts = [d for d in (first, second) if not isinstance(d, Exception)]
+            final = self.call(self.large_model, SYSTEM_PROMPT, prompt, self.tools)
+            return Outcome(final.text, self.large_model, route, replies=[*drafts, final], check=check)
         drafts = [first, second]
         check = verify.check(first, second)
         if check.action == ACCEPT:

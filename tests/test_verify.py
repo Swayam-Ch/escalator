@@ -101,3 +101,27 @@ def test_questions_without_code_fall_back_to_the_gate():
     call = Scripted(draft("Canberra"), draft("Canberra"))
     outcome = run(("small", 0.95), call, gate=0.95)
     assert outcome.path == "direct-small" and outcome.final_model == SMALL and outcome.gate.action == "accept"
+
+
+def test_a_draft_that_errors_escalates_instead_of_failing_the_question():
+    class Flaky(Scripted):
+        def __call__(self, model_id, system_prompt, prompt, tools=None):
+            if model_id == SMALL and len(self.calls) == 0:
+                self.calls.append((model_id, True))
+                raise RuntimeError("Model produced invalid sequence as part of ToolUse")
+            return super().__call__(model_id, system_prompt, prompt, tools)
+
+    call = Flaky(draft("ANSWER: 361105294", "print(48917 * 7382)"))
+    outcome = run(("small", 0.95), call)
+    assert outcome.final_model == LARGE and outcome.path == "escalated"
+    assert outcome.check.reason == "a draft failed: RuntimeError"
+
+
+def test_summary_survives_a_row_without_a_route():
+    sys.path.insert(0, str(ROOT / "bench"))
+    from run_tool_bench import VERIFY, summarise
+
+    rows = [{"id": "calc-13", "kind": "counting", "answer": 242, "model": VERIFY, "tool": True, "rep": 0,
+             "correct": ok, "predicted": 242.0 if ok else None, "cost": 0.0, "latency_ms": 1.0, "tool_calls": 1,
+             "path": "verified" if ok else None} for ok in (True, False)]
+    assert "tool on: error 1, verified 1" in summarise(rows, [(VERIFY, True)])

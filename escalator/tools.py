@@ -48,6 +48,28 @@ def format_result(result: dict[str, Any]) -> str:
     return "\n".join(parts)
 
 
+def fix_escaped_newlines(code: str) -> str:
+    """Undo one model mistake: a whole program on one line with literal "\\n" for line breaks.
+
+    In the benchmark this happened once and the model resent the same broken program 121 times.
+    The code is only changed when it doesn't compile as sent and does compile after the fix, so a
+    real "\\n" inside a string literal is left alone.
+    """
+    if "\n" in code.strip() or "\\n" not in code:
+        return code
+    try:
+        compile(code, "<run_python>", "exec")
+        return code
+    except SyntaxError:
+        pass
+    fixed = code.replace("\\n", "\n").replace("\\t", "\t")
+    try:
+        compile(fixed, "<run_python>", "exec")
+        return fixed
+    except SyntaxError:
+        return code
+
+
 def make_run_python(invoke: Invoke = lambda_invoke, log: list | None = None):
     """Build the Strands tool. Pass a different `invoke` to run code somewhere else (tests do).
 
@@ -66,6 +88,7 @@ def make_run_python(invoke: Invoke = lambda_invoke, log: list | None = None):
         Args:
             code: A complete Python 3 program. Print every value you need to see.
         """
+        code = fix_escaped_newlines(code)
         result = invoke({"code": code})
         if log is not None:
             log.append({"code": code, "result": result})

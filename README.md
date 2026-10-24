@@ -266,11 +266,13 @@ cheap drafts.
 
 Two things this run showed:
 
-- **A runaway loop.** In one answer (calc-14, a Nova draft that was then escalated), the models
-  called the tool 122 times, which cost $0.074 on its own and is most of the difference in cost above. `bedrock_call` now caps tool
-  calls at 6 per answer (`ESCALATOR_MAX_RUNS`) with a Strands `BeforeToolCallEvent` hook
-  ([`RunBudget`](escalator/tools.py)); further calls are cancelled with a message telling the model
-  to answer.
+- **A runaway loop.** In one answer (calc-14, a Nova draft that was then escalated), the tool
+  was called 122 times, which cost $0.074 on its own and is most of the difference in cost above.
+  The logged code shows why: the program arrived on one line with literal `\n` instead of line
+  breaks, failed with a `SyntaxError`, and was sent again unchanged 121 times. Two fixes: the tool
+  now repairs that mistake when doing so makes the program compile (`fix_escaped_newlines`), and
+  `bedrock_call` caps tool calls at 6 per answer (`ESCALATOR_MAX_RUNS`) with a Strands
+  `BeforeToolCallEvent` hook ([`RunBudget`](escalator/tools.py)) that tells the model to answer.
 - **The gate doesn't trust tool results.** It sent 17 of the 18 Nova drafts it saw to Haiku, though
   Nova with the tool is right about 78% of the time. The 2B gate can't tell that a number came from
   code that ran. Telling it so is the next step.

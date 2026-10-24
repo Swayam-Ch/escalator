@@ -11,7 +11,7 @@ from run_tool_bench import ANSWER_FORMAT, ESCALATOR, is_correct, parse_answer, s
 
 from escalator.agent import CLARIFY_PROMPT, SYSTEM_PROMPT, Escalator, Reply  # noqa: E402
 from escalator.patterns import AdequacyGate, TierRouter  # noqa: E402
-from escalator.tools import RunBudget, format_result, make_run_python  # noqa: E402
+from escalator.tools import RunBudget, fix_escaped_newlines, format_result, make_run_python  # noqa: E402
 from test_escalator import FakeDecider  # noqa: E402
 
 # ----------------------------------------------------------------------------- Lambda handler
@@ -165,3 +165,18 @@ def test_run_budget_cancels_tool_calls_past_the_limit():
     assert [bool(e.cancel_tool) for e in events] == [False, False, True, True]
     assert "Answer now" in events[-1].cancel_tool
     assert isinstance(budget, HookProvider)  # Strands accepts it in Agent(hooks=[...])
+
+
+def test_escaped_newlines_are_fixed_only_when_that_makes_the_code_compile():
+    broken = "def f(n):\\n    return n * 2\\nprint(f(21))"          # one line, literal backslash-n
+    assert fix_escaped_newlines(broken) == "def f(n):\n    return n * 2\nprint(f(21))"
+    assert handler({"code": fix_escaped_newlines(broken)})["stdout"] == "42\n"
+    in_a_string = 'print("a\\nb")'                                 # valid as sent: leave it alone
+    assert fix_escaped_newlines(in_a_string) == in_a_string
+    assert fix_escaped_newlines("x = 1\nprint(x)") == "x = 1\nprint(x)"
+
+
+def test_tool_runs_and_logs_the_fixed_code():
+    log = []
+    out = make_run_python(handler, log=log)(code="x = 6\\nprint(x * 7)")
+    assert "42" in out and log[0]["code"] == "x = 6\nprint(x * 7)"

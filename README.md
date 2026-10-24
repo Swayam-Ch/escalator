@@ -226,6 +226,8 @@ example the `AWSLambda_FullAccess` and `IAMFullAccess` managed policies; you can
 python deploy/deploy_run_python.py           # creates the role and function, then runs print(6 * 7)
 escalator --tool "How many prime numbers are there below 10,000?"
 python bench/run_tool_bench.py               # 18 questions with exact answers, tool off vs on
+python bench/run_tool_bench.py --repeat 3    # ask each question 3 times: spread, and how often the tool was used
+python bench/run_tool_bench.py --models escalator   # the whole agent: decider route, model + tool, gate
 ```
 
 `escalator --tool` prints every program the model ran and its output before the answer, and the

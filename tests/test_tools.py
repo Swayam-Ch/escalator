@@ -7,9 +7,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(ROOT), str(ROOT / "bench"), str(ROOT / "lambda" / "run_python")]
 
 from handler import handler  # noqa: E402
-from run_tool_bench import is_correct, parse_answer, summarise  # noqa: E402
+from run_tool_bench import ANSWER_FORMAT, ESCALATOR, is_correct, parse_answer, summarise, with_answer_format  # noqa: E402,E501
 
-from escalator.agent import Escalator, Reply  # noqa: E402
+from escalator.agent import CLARIFY_PROMPT, SYSTEM_PROMPT, Escalator, Reply  # noqa: E402
 from escalator.patterns import AdequacyGate, TierRouter  # noqa: E402
 from escalator.tools import format_result, make_run_python  # noqa: E402
 from test_escalator import FakeDecider  # noqa: E402
@@ -126,3 +126,28 @@ def test_tool_bench_summary():
     text = summarise(rows, [(small, False), (small, True)])
     assert "| nova-micro-v1 | off | 0/1 |" in text and "| nova-micro-v1 | on | 1/1 |" in text
     assert "✗ 2.0" in text
+
+
+def test_tool_bench_summary_with_repeats_reports_the_range_and_tool_use():
+    small = "us.amazon.nova-micro-v1:0"
+    rows = [{"id": f"calc-0{i}", "kind": "arithmetic", "answer": 1.0, "model": small, "tool": True, "rep": rep,
+             "correct": not (rep == 1 and i == 1), "predicted": 1.0, "cost": 0.001, "latency_ms": 500.0,
+             "tool_calls": 0 if (rep, i) == (0, 1) else 1, "path": None} for rep in (0, 1) for i in (1, 2)]
+    text = summarise(rows, [(small, True)])
+    assert "| nova-micro-v1 | on | 1.5/2 (1-2) | $0.002000 |" in text
+    assert "| 3/4 |" in text and "✗ 1/2" in text and "✓ 2/2" in text
+
+
+def test_tool_bench_summary_lists_escalator_routes():
+    rows = [{"id": "calc-01", "kind": "finance", "answer": 1.0, "model": ESCALATOR, "tool": True, "correct": True,
+             "predicted": 1.0, "cost": 0.001, "latency_ms": 900.0, "tool_calls": 1, "path": path}
+            for path in ("direct-large", "direct-small")]
+    assert "tool on: direct-large 1, direct-small 1" in summarise(rows, [(ESCALATOR, True)])
+
+
+def test_answer_format_goes_to_answering_calls_only():
+    seen = []
+    call = with_answer_format(lambda model_id, system_prompt, prompt, tools=None: seen.append(system_prompt))
+    call("m", SYSTEM_PROMPT, "q")
+    call("m", CLARIFY_PROMPT, "q")
+    assert seen == [f"{SYSTEM_PROMPT}\n\n{ANSWER_FORMAT}", CLARIFY_PROMPT]

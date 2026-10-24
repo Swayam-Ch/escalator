@@ -267,6 +267,11 @@ This is a small set written for this test, so read the numbers as a direction, n
 
 ## Notebook
 
+[`notebooks/run_python_tool.ipynb`](notebooks/run_python_tool.ipynb) covers the run_python tool:
+the sandbox's safety checks, the Strands tool, the before/after benchmark, where the tool made the
+difference and what still fails. It calls the Lambda handler locally, so it runs without AWS; set
+`RUN_LIVE = True` to use the deployed function and Bedrock.
+
 [`notebooks/escalator_walkthrough.ipynb`](notebooks/escalator_walkthrough.ipynb) walks through the
 saved results, why v1 failed, the threshold sweep and the held-out check. It reads
 `bench/reported/`, so it runs without AWS or the decider; set `RUN_LIVE = True` to call both.
@@ -296,7 +301,7 @@ bench/                  benchmark + held-out questions, runner, threshold sweep,
 examples/               the pattern with no Strands or Bedrock
 lambda/run_python/       the AWS Lambda sandbox behind the run_python tool
 deploy/                 creates the Lambda function and its logs-only role
-notebooks/              walkthrough of the results, the sweep and the pattern (runs without AWS)
+notebooks/              walkthroughs of the routing results and the run_python tool (run without AWS)
 docs/                   article, demo video script, trade-off chart, submission checklist
 ```
 

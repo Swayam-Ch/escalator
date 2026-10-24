@@ -200,6 +200,8 @@ Prices live in [`escalator/pricing.py`](escalator/pricing.py). Check them agains
 
 ## The run_python tool (AWS Lambda)
 
+Demo video: https://youtu.be/3geFHbr-2kY
+
 The decider can tell whether an answer addresses the question, but not whether a calculation is
 right or code does what it claims. `run_python` closes that gap: the answering model writes a
 short Python program, an AWS Lambda function runs it, and the model answers from what it printed.

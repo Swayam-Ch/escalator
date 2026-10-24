@@ -65,6 +65,19 @@ def test_cli_shows_the_code_that_ran():
     assert "run_python #1" in text and "print(6 * 7)" in text and "-> 42" in text
 
 
+def test_cli_indents_multi_line_output_and_shows_runs_before_the_answer():
+    from escalator.agent import Outcome
+    from escalator.cli import render, render_runs
+
+    text = render_runs([{"code": "print(1); print(2)", "result": {"stdout": "1\n2\n"}}])
+    assert text.splitlines()[-1].endswith("     \033[32m2\033[0m")
+    reply = Reply("us.amazon.nova-micro-v1:0", "2", 10, 5, 100.0, tool_calls=1)
+    outcome = Outcome(answer="2", final_model=reply.model_id, replies=[reply],
+                      route=TierRouter(FakeDecider(route=("small", 0.95))).route("q"))
+    shown = render(outcome, [{"code": "print(2)", "result": {"stdout": "2\n"}}])
+    assert shown.index("decider route") < shown.index("run_python #1") < shown.index("[nova-micro-v1]")
+
+
 def test_format_result_shows_timeouts_and_errors():
     assert format_result({"timed_out": True, "stdout": "", "stderr": ""}).startswith("timed out")
     text = format_result({"exit_code": 1, "stdout": "", "stderr": "NameError: x"})

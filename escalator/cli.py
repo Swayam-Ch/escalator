@@ -24,11 +24,13 @@ def render_runs(runs: list[dict]) -> str:
         lines.append(f"{CYAN}run_python #{i}{RESET} {DIM}(AWS Lambda){RESET}")
         lines += [f"  {line}" for line in run["code"].strip().splitlines()]
         output = (run["result"].get("stdout") or run["result"].get("stderr") or "").strip()
-        lines.append(f"  {GREEN}-> {output or '(nothing printed)'}{RESET}")
+        first, *rest = (output or "(nothing printed)").splitlines()
+        lines.append(f"  {GREEN}-> {first}{RESET}")
+        lines += [f"     {GREEN}{line}{RESET}" for line in rest]
     return "\n".join(lines)
 
 
-def render(outcome: Outcome) -> str:
+def render(outcome: Outcome, runs: list[dict] | None = None) -> str:
     r = outcome.route
     lines = [f"{CYAN}decider route{RESET}  -> {BOLD}{r.action}{RESET}  ({r.reason})  "
              f"{DIM}{r.signals} {r.latency_ms or 0:.0f}ms{RESET}"]
@@ -41,6 +43,8 @@ def render(outcome: Outcome) -> str:
         ran = f", ran code {reply.tool_calls}x" if reply.tool_calls else ""
         lines.append(f"{DIM}  {short(reply.model_id)}: {reply.input_tokens}+{reply.output_tokens} tok, "
                      f"${reply.cost_usd:.6f}, {reply.latency_ms:.0f}ms{ran}{RESET}")
+    if runs:
+        lines.append(render_runs(runs))
     lines.append(f"\n{BOLD}[{short(outcome.final_model)}]{RESET} {outcome.answer}\n")
     return "\n".join(lines)
 
@@ -67,10 +71,7 @@ def main() -> int:
                                      expert_at=STRICT_EXPERT_AT if args.strict else None), AdequacyGate(decider),
                           tools=[make_run_python(log=runs)] if args.tool else [])
     if args.prompt:
-        outcome = escalator(" ".join(args.prompt))
-        if runs:
-            print(render_runs(runs))
-        print(render(outcome))
+        print(render(escalator(" ".join(args.prompt)), runs))
         return 0
 
     total = 0.0
@@ -85,10 +86,8 @@ def main() -> int:
             continue
         runs.clear()
         outcome = escalator(prompt)
-        if runs:
-            print(render_runs(runs))
         total += outcome.cost_usd
-        print(render(outcome))
+        print(render(outcome, runs))
         print(f"{DIM}session LLM spend: ${total:.6f}{RESET}\n")
     return 0
 

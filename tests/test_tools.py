@@ -52,6 +52,19 @@ def test_tool_runs_code_through_the_invoker():
     assert seen == [{"code": "print(6 * 7)"}]
 
 
+def test_tool_logs_each_run():
+    log = []
+    make_run_python(handler, log=log)(code="print(2 + 2)")
+    assert log[0]["code"] == "print(2 + 2)" and log[0]["result"]["stdout"] == "4\n"
+
+
+def test_cli_shows_the_code_that_ran():
+    from escalator.cli import render_runs
+
+    text = render_runs([{"code": "print(6 * 7)", "result": {"stdout": "42\n"}}])
+    assert "run_python #1" in text and "print(6 * 7)" in text and "-> 42" in text
+
+
 def test_format_result_shows_timeouts_and_errors():
     assert format_result({"timed_out": True, "stdout": "", "stderr": ""}).startswith("timed out")
     text = format_result({"exit_code": 1, "stdout": "", "stderr": "NameError: x"})

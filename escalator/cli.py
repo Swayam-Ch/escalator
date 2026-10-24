@@ -17,6 +17,17 @@ def short(model_id: str) -> str:
     return model_id.split(".")[-1].split(":")[0]
 
 
+def render_runs(runs: list[dict]) -> str:
+    """The code the model ran through run_python, and what it printed."""
+    lines = []
+    for i, run in enumerate(runs, 1):
+        lines.append(f"{CYAN}run_python #{i}{RESET} {DIM}(AWS Lambda){RESET}")
+        lines += [f"  {line}" for line in run["code"].strip().splitlines()]
+        output = (run["result"].get("stdout") or run["result"].get("stderr") or "").strip()
+        lines.append(f"  {GREEN}-> {output or '(nothing printed)'}{RESET}")
+    return "\n".join(lines)
+
+
 def render(outcome: Outcome) -> str:
     r = outcome.route
     lines = [f"{CYAN}decider route{RESET}  -> {BOLD}{r.action}{RESET}  ({r.reason})  "
@@ -51,11 +62,15 @@ def main() -> int:
         return 1
     print(f"{DIM}decider: {health.get('checkpoint', '?')} on {health.get('device', '?')}{RESET}")
 
+    runs: list[dict] = []
     escalator = Escalator(TierRouter(decider, sure=args.sure, large_at=args.large_at,
                                      expert_at=STRICT_EXPERT_AT if args.strict else None), AdequacyGate(decider),
-                          tools=[make_run_python()] if args.tool else [])
+                          tools=[make_run_python(log=runs)] if args.tool else [])
     if args.prompt:
-        print(render(escalator(" ".join(args.prompt))))
+        outcome = escalator(" ".join(args.prompt))
+        if runs:
+            print(render_runs(runs))
+        print(render(outcome))
         return 0
 
     total = 0.0
@@ -68,7 +83,10 @@ def main() -> int:
             break
         if not prompt:
             continue
+        runs.clear()
         outcome = escalator(prompt)
+        if runs:
+            print(render_runs(runs))
         total += outcome.cost_usd
         print(render(outcome))
         print(f"{DIM}session LLM spend: ${total:.6f}{RESET}\n")

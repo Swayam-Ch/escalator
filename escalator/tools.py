@@ -47,8 +47,12 @@ def format_result(result: dict[str, Any]) -> str:
     return "\n".join(parts)
 
 
-def make_run_python(invoke: Invoke = lambda_invoke):
-    """Build the Strands tool. Pass a different `invoke` to run code somewhere else (tests do)."""
+def make_run_python(invoke: Invoke = lambda_invoke, log: list | None = None):
+    """Build the Strands tool. Pass a different `invoke` to run code somewhere else (tests do).
+
+    If `log` is a list, every run is appended to it as {"code": ..., "result": ...}, so callers
+    can show or save exactly what the model ran.
+    """
     from strands import tool
 
     @tool
@@ -61,6 +65,9 @@ def make_run_python(invoke: Invoke = lambda_invoke):
         Args:
             code: A complete Python 3 program. Print every value you need to see.
         """
-        return format_result(invoke({"code": code}))
+        result = invoke({"code": code})
+        if log is not None:
+            log.append({"code": code, "result": result})
+        return format_result(result)
 
     return run_python

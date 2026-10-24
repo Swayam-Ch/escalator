@@ -87,7 +87,8 @@ def main() -> int:
     questions = questions[: args.limit] if args.limit else questions
     models = [{"small": SMALL_MODEL, "large": LARGE_MODEL}[m] for m in args.models.split(",")]
     configs = [(model, tool) for model in models for tool in (False, True)]
-    run_python = make_run_python()
+    runs: list[dict] = []
+    run_python = make_run_python(log=runs)
 
     out_dir = ROOT / "bench" / "results" / time.strftime("tools-%Y%m%d-%H%M%S")
     out_dir.mkdir(parents=True)
@@ -95,6 +96,7 @@ def main() -> int:
     for q in questions:
         for model, tool in configs:
             row = {**q, "model": model, "tool": tool}
+            runs.clear()
             try:
                 reply = bedrock_call(model, f"{SYSTEM_PROMPT}\n\n{ANSWER_FORMAT}", q["prompt"],
                                      [run_python] if tool else None)
@@ -105,6 +107,7 @@ def main() -> int:
             except Exception as exc:  # one failed call should not lose the whole run
                 row.update(text="", predicted=None, cost=0.0, latency_ms=0.0, tool_calls=0,
                            correct=False, error=f"{type(exc).__name__}: {exc}")
+            row["runs"] = list(runs)  # the code the model ran and what it printed
             rows.append(row)
             mark = "✓" if row["correct"] else "✗"
             print(f"{q['id']:<8} {short(model):<28} tool={'on ' if tool else 'off'} {mark} "

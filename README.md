@@ -328,6 +328,8 @@ $0.00012 instead of about $0.002 on Claude Haiku.
 
 **Live results**, 18 questions asked 3 times (`--repeat 3 --models large,verify`):
 
+![Verify mode vs Claude Haiku with and without run_python](docs/verify-mode.png)
+
 | | Correct per run | Kept on Nova Micro | LLM cost per run of 18 |
 | --- | :---: | :---: | ---: |
 | Claude Haiku 4.5 + run_python | 18, 18, 18 | | $0.0560 (mean) |

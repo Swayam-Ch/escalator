@@ -11,7 +11,7 @@ from run_tool_bench import ANSWER_FORMAT, ESCALATOR, is_correct, parse_answer, s
 
 from escalator.agent import CLARIFY_PROMPT, SYSTEM_PROMPT, Escalator, Reply  # noqa: E402
 from escalator.patterns import AdequacyGate, TierRouter  # noqa: E402
-from escalator.tools import format_result, make_run_python  # noqa: E402
+from escalator.tools import RunBudget, format_result, make_run_python  # noqa: E402
 from test_escalator import FakeDecider  # noqa: E402
 
 # ----------------------------------------------------------------------------- Lambda handler
@@ -151,3 +151,17 @@ def test_answer_format_goes_to_answering_calls_only():
     call("m", SYSTEM_PROMPT, "q")
     call("m", CLARIFY_PROMPT, "q")
     assert seen == [f"{SYSTEM_PROMPT}\n\n{ANSWER_FORMAT}", CLARIFY_PROMPT]
+
+
+def test_run_budget_cancels_tool_calls_past_the_limit():
+    from types import SimpleNamespace
+
+    from strands.hooks import HookProvider
+
+    budget = RunBudget(limit=2)
+    events = [SimpleNamespace(cancel_tool=False) for _ in range(4)]
+    for event in events:
+        budget.check(event)
+    assert [bool(e.cancel_tool) for e in events] == [False, False, True, True]
+    assert "Answer now" in events[-1].cancel_tool
+    assert isinstance(budget, HookProvider)  # Strands accepts it in Agent(hooks=[...])

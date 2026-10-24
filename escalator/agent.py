@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 from .patterns import ACCEPT, CLARIFY, LARGE, AdequacyGate, TierRouter, Verdict
 from .pricing import cost_usd
-from .tools import TOOL_HINT
+from .tools import TOOL_HINT, RunBudget
 
 SMALL_MODEL = os.environ.get("ESCALATOR_SMALL_MODEL", "us.amazon.nova-micro-v1:0")
 LARGE_MODEL = os.environ.get("ESCALATOR_LARGE_MODEL", "us.anthropic.claude-sonnet-4-5-20250929-v1:0")
@@ -49,7 +49,8 @@ def bedrock_call(model_id: str, system_prompt: str, prompt: str, tools: list | N
     model = BedrockModel(model_id=model_id, region_name=os.environ.get("AWS_REGION", "us-east-1"))
     if tools:
         system_prompt = f"{system_prompt}\n\n{TOOL_HINT}"
-    agent = Agent(model=model, system_prompt=system_prompt, tools=tools or [], callback_handler=None)
+    agent = Agent(model=model, system_prompt=system_prompt, tools=tools or [], callback_handler=None,
+                  hooks=[RunBudget()] if tools else None)
     started = time.perf_counter()
     result = agent(prompt)
     usage = result.metrics.accumulated_usage

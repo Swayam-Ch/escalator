@@ -237,35 +237,59 @@ benchmark saves them with each result.
 
 18 questions: finance formulas, big arithmetic, dates, counting, "what does this code print",
 probability and statistics ([`bench/calc_questions.jsonl`](bench/calc_questions.jsonl)). Each
-has an exact answer and a tolerance, so the grading is done by code, with no LLM judge.
+has an exact answer and a tolerance, so the grading is done by code, with no LLM judge. Every
+question was asked 3 times (`--repeat 3`); Correct is the mean, with the lowest and highest run.
 
 ![Correct answers with and without run_python](docs/tool-before-after.png)
 
-| Model | Tool | Correct | LLM cost (all 18) | Median latency | Code runs |
+| Model | Tool | Correct (3 runs) | LLM cost per run of 18 | Median latency | Called the tool |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Amazon Nova Micro | off | 2/18 | $0.00007 | 766 ms | 0 |
-| Amazon Nova Micro | on | **13/18** | $0.00145 | 2093 ms | 21 |
-| Claude Haiku 4.5 | off | 11/18 | $0.04152 | 2364 ms | 0 |
-| Claude Haiku 4.5 | on | **18/18** | $0.05523 | 3164 ms | 19 |
+| Amazon Nova Micro | off | 2.0/18 (1-3) | $0.00007 | 775 ms | |
+| Amazon Nova Micro | on | **14.0/18 (13-15)** | $0.00162 | 2287 ms | 54 of 54 |
+| Claude Haiku 4.5 | off | 11.0/18 (10-13) | $0.04617 | 2518 ms | |
+| Claude Haiku 4.5 | on | **18/18 (18-18)** | $0.05284 | 3034 ms | 54 of 54 |
 
-Nova Micro with the tool got more right than Haiku without it, for about 1/29 of the cost. Without
-the tool, both models make confident mistakes. Haiku gave $177,033.25 for a retirement balance of
-$260,463.33, and both got the 9-digit multiplication wrong. Lambda cost is not in the table; 40
-runs of a few hundred milliseconds each fit in the free tier.
+Nova Micro's worst run with the tool (13) tied Haiku's best run without it, at about 1/29 of the
+cost. Haiku with the tool got every question right in every run, and both models called the tool
+for every question. Without it, both make confident mistakes: Haiku put a $260,463.33 retirement
+balance anywhere from about $181,000 to $243,000, and both got the 9-digit multiplication wrong in all 3
+runs. Lambda cost is not in the table; a few hundred short runs fit in the free tier.
 
-Nova Micro still missed 5 with the tool, and the misses are worth knowing about:
+**The whole agent.** `--models escalator` sends the same questions through Escalator itself: the
+decider routes each one, the chosen model answers (with or without the tool), and the gate checks
+cheap drafts.
 
-- **calc-03**: the program printed 13678.52 and the reply said so, but the final line read
-  `ANSWER: 1367852`. The tool can't fix a formatting slip after the run.
+| Escalator | Correct (3 runs) | LLM cost per run of 18 | Routes over 54 answers |
+| --- | ---: | ---: | --- |
+| no tool | 11.7/18 (11-12) | $0.04391 | 36 straight to Haiku, 18 escalated after a Nova draft |
+| with run_python | **18/18 (18-18)** | $0.07650 | 36 straight to Haiku, 17 escalated, 1 answered by Nova |
+
+Two things this run showed:
+
+- **A runaway loop.** In one answer (calc-14, a Nova draft that was then escalated), the models
+  called the tool 122 times, which cost $0.074 on its own and is most of the difference in cost above. `bedrock_call` now caps tool
+  calls at 6 per answer (`ESCALATOR_MAX_RUNS`) with a Strands `BeforeToolCallEvent` hook
+  ([`RunBudget`](escalator/tools.py)); further calls are cancelled with a message telling the model
+  to answer.
+- **The gate doesn't trust tool results.** It sent 17 of the 18 Nova drafts it saw to Haiku, though
+  Nova with the tool is right about 78% of the time. The 2B gate can't tell that a number came from
+  code that ran. Telling it so is the next step.
+
+Where Nova Micro still goes wrong with the tool (12 misses over 54 answers):
+
+- **calc-03**: in one run the reply said 13678.52, then the final line read `ANSWER: 1367852`.
+  The tool can't fix a formatting slip after the run. Another run gave 13679.20.
 - **calc-05**: answered 1111 where 1111.111 was asked for.
-- **calc-01**: off by 13 cents ($260,463.20).
-- **calc-13**: the program itself was wrong (30 ways to make change instead of 242). Running
-  code only helps if the code is right.
-- **calc-17**: gave 14.7684. The exact answer is 14.7 (6 × the 6th harmonic number), so the
-  program probably estimated it by simulation instead of working it out.
+- **calc-01**: wrong in all 3 runs ($260,463.20, $262,482.70, $380,463), so the formula it wrote
+  varied.
+- **calc-13**: one run wrote the wrong program (67 ways to make change instead of 242).
+- **calc-10**: off by one (76128) in one run.
+- **calc-17**: gave estimates such as 14.802 and 14.6436. The exact answer is 14.7 (6 × the 6th harmonic
+  number), so the program probably simulated it instead of working it out.
 
-Full per-question results are in [`bench/reported/tool-summary.md`](bench/reported/tool-summary.md).
-This is a small set written for this test, so read the numbers as a direction, not a leaderboard.
+Per-question results: [3 runs](bench/reported/tool-repeat3-summary.md) and
+[the first single run](bench/reported/tool-summary.md). This is a small set written for this test,
+so read the numbers as a direction, not a leaderboard.
 
 ## Notebook
 

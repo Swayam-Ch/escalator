@@ -12,6 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 FUNCTION_NAME = os.environ.get("ESCALATOR_RUN_PYTHON_FUNCTION", "escalator-run-python")
+MAX_RUNS = int(os.environ.get("ESCALATOR_MAX_RUNS", "6"))  # tool calls allowed in one answer
 
 TOOL_HINT = (
     "You can run Python with the run_python tool. For any calculation, counting, date "
@@ -71,3 +72,26 @@ def make_run_python(invoke: Invoke = lambda_invoke, log: list | None = None):
         return format_result(result)
 
     return run_python
+
+
+class RunBudget:
+    """A Strands hook provider that caps tool calls in one agent turn.
+
+    Without it, a model stuck in a loop can keep calling the tool (one benchmark answer ran code
+    122 times). After `limit` calls, further calls are cancelled with a message telling the model
+    to answer from what it has.
+    """
+
+    def __init__(self, limit: int = MAX_RUNS):
+        self.limit, self.used = limit, 0
+
+    def register_hooks(self, registry, **kwargs) -> None:
+        from strands.hooks import BeforeToolCallEvent
+
+        registry.add_callback(BeforeToolCallEvent, self.check)
+
+    def check(self, event) -> None:
+        self.used += 1
+        if self.used > self.limit:
+            event.cancel_tool = (f"Limit of {self.limit} code runs reached. Answer now from the outputs "
+                                 "you already have.")

@@ -1,0 +1,102 @@
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path[:0] = [str(ROOT), str(ROOT / "bench"), str(ROOT / "lambda" / "run_python")]
+
+from handler import handler  # noqa: E402
+from run_tool_bench import is_correct, parse_answer, summarise  # noqa: E402
+
+from escalator.agent import Escalator, Reply  # noqa: E402
+from escalator.patterns import AdequacyGate, TierRouter  # noqa: E402
+from escalator.tools import format_result, make_run_python  # noqa: E402
+from test_escalator import FakeDecider  # noqa: E402
+
+# ----------------------------------------------------------------------------- Lambda handler
+
+
+def test_handler_returns_what_the_program_prints():
+    assert handler({"code": "print(6 * 7)"}) == {"stdout": "42\n", "stderr": "", "exit_code": 0, "timed_out": False}
+
+
+def test_handler_hides_the_functions_aws_credentials(monkeypatch):
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "do-not-leak")
+    result = handler({"code": "import os; print(os.environ.get('AWS_SECRET_ACCESS_KEY'))"})
+    assert "do-not-leak" not in result["stdout"]
+
+
+def test_handler_stops_runaway_code():
+    assert handler({"code": "while True: pass", "timeout": 1})["timed_out"] is True
+
+
+def test_handler_reports_errors():
+    result = handler({"code": "1 / 0"})
+    assert result["exit_code"] == 1 and "ZeroDivisionError" in result["stderr"]
+
+
+# ----------------------------------------------------------------------------- the Strands tool
+
+
+def test_tool_runs_code_through_the_invoker():
+    seen = []
+
+    def invoke(payload):
+        seen.append(payload)
+        return handler(payload)
+
+    run_python = make_run_python(invoke)
+    assert run_python.tool_name == "run_python"
+    assert "42" in run_python(code="print(6 * 7)")
+    assert seen == [{"code": "print(6 * 7)"}]
+
+
+def test_format_result_shows_timeouts_and_errors():
+    assert format_result({"timed_out": True, "stdout": "", "stderr": ""}).startswith("timed out")
+    text = format_result({"exit_code": 1, "stdout": "", "stderr": "NameError: x"})
+    assert "(nothing printed)" in text and "NameError" in text
+
+
+def test_escalator_gives_tools_to_answering_models_but_not_to_clarify():
+    calls = []
+
+    def call(model_id, system_prompt, prompt, tools=None):
+        calls.append((model_id, tools))
+        return Reply(model_id, "answer", 10, 5, 100.0)
+
+    tools = [make_run_python(handler)]
+    for route in [("small", 0.95), ("large", 0.95), ("clarify", 0.95)]:
+        Escalator(TierRouter(FakeDecider(route=route)), AdequacyGate(FakeDecider()), call=call,
+                  small_model="us.amazon.nova-micro-v1:0",
+                  large_model="us.anthropic.claude-haiku-4-5-20251001-v1:0", tools=tools)("q")
+    assert [t for _, t in calls] == [tools, tools, None]
+
+
+# ----------------------------------------------------------------------------- benchmark
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("The result is 42.\nANSWER: 42", 42.0),
+    ("ANSWER: $260,463.33", 260463.33),
+    ("**ANSWER: 1111.111**", 1111.111),
+    ("first ANSWER: 1 then corrected\nANSWER: 2", 2.0),
+    ("no answer line here", None),
+])
+def test_parse_answer(text, expected):
+    assert parse_answer(text) == expected
+
+
+def test_is_correct_uses_the_tolerance():
+    assert is_correct(386.66, 386.66, 0.011) and is_correct(386.67, 386.66, 0.011)
+    assert not is_correct(386.70, 386.66, 0.011) and not is_correct(None, 1, 0)
+
+
+def test_tool_bench_summary():
+    small = "us.amazon.nova-micro-v1:0"
+    rows = [{"id": "calc-01", "kind": "finance", "answer": 1.0, "model": small, "tool": tool,
+             "correct": tool, "predicted": 1.0 if tool else 2.0, "cost": 0.00001,
+             "latency_ms": 500.0, "tool_calls": int(tool)} for tool in (False, True)]
+    text = summarise(rows, [(small, False), (small, True)])
+    assert "| nova-micro-v1 | off | 0/1 |" in text and "| nova-micro-v1 | on | 1/1 |" in text
+    assert "✗ 2.0" in text

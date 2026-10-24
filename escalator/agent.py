@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 
 from .patterns import ACCEPT, CLARIFY, LARGE, AdequacyGate, TierRouter, Verdict
 from .pricing import cost_usd
+from .tools import TOOL_HINT
 
 SMALL_MODEL = os.environ.get("ESCALATOR_SMALL_MODEL", "us.amazon.nova-micro-v1:0")
 LARGE_MODEL = os.environ.get("ESCALATOR_LARGE_MODEL", "us.anthropic.claude-sonnet-4-5-20250929-v1:0")
@@ -29,28 +30,32 @@ class Reply:
     input_tokens: int
     output_tokens: int
     latency_ms: float
+    tool_calls: int = 0
 
     @property
     def cost_usd(self) -> float:
         return cost_usd(self.model_id, self.input_tokens, self.output_tokens)
 
 
-# (model_id, system_prompt, user_prompt) -> Reply. Swappable so tests need no AWS.
-CallModel = Callable[[str, str, str], Reply]
+# (model_id, system_prompt, user_prompt, tools) -> Reply. Swappable so tests need no AWS.
+CallModel = Callable[..., Reply]
 
 
-def bedrock_call(model_id: str, system_prompt: str, prompt: str) -> Reply:
-    """One stateless Strands agent turn on a Bedrock model."""
+def bedrock_call(model_id: str, system_prompt: str, prompt: str, tools: list | None = None) -> Reply:
+    """One stateless Strands agent turn on a Bedrock model, with any tools it may call."""
     from strands import Agent
     from strands.models import BedrockModel
 
     model = BedrockModel(model_id=model_id, region_name=os.environ.get("AWS_REGION", "us-east-1"))
-    agent = Agent(model=model, system_prompt=system_prompt, callback_handler=None)
+    if tools:
+        system_prompt = f"{system_prompt}\n\n{TOOL_HINT}"
+    agent = Agent(model=model, system_prompt=system_prompt, tools=tools or [], callback_handler=None)
     started = time.perf_counter()
     result = agent(prompt)
     usage = result.metrics.accumulated_usage
+    calls = sum(m.call_count for m in result.metrics.tool_metrics.values())
     return Reply(model_id, str(result).strip(), usage["inputTokens"], usage["outputTokens"],
-                 (time.perf_counter() - started) * 1000)
+                 (time.perf_counter() - started) * 1000, calls)
 
 
 @dataclass
@@ -90,6 +95,7 @@ class Escalator:
     call: CallModel = bedrock_call
     small_model: str = SMALL_MODEL
     large_model: str = LARGE_MODEL
+    tools: list = field(default_factory=list)  # e.g. [make_run_python()]; the clarify step gets none
 
     def __call__(self, prompt: str) -> Outcome:
         route = self.router.route(prompt)
@@ -99,13 +105,13 @@ class Escalator:
             return Outcome(reply.text, self.small_model, route, replies=[reply])
 
         if route.action == LARGE:
-            reply = self.call(self.large_model, SYSTEM_PROMPT, prompt)
+            reply = self.call(self.large_model, SYSTEM_PROMPT, prompt, self.tools)
             return Outcome(reply.text, self.large_model, route, replies=[reply])
 
-        draft = self.call(self.small_model, SYSTEM_PROMPT, prompt)
+        draft = self.call(self.small_model, SYSTEM_PROMPT, prompt, self.tools)
         verdict = self.gate.check(prompt, draft.text)
         if verdict.action == ACCEPT:
             return Outcome(draft.text, self.small_model, route, verdict, [draft])
 
-        final = self.call(self.large_model, SYSTEM_PROMPT, prompt)
+        final = self.call(self.large_model, SYSTEM_PROMPT, prompt, self.tools)
         return Outcome(final.text, self.large_model, route, verdict, [draft, final])

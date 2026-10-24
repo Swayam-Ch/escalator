@@ -198,6 +198,34 @@ decider's own benchmarks, and a held-out set large enough to tune on without ove
 Prices live in [`escalator/pricing.py`](escalator/pricing.py). Check them against the
 [Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/) before you publish numbers.
 
+## The run_python tool (AWS Lambda)
+
+The decider can tell whether an answer addresses the question, but not whether a calculation is
+right or code does what it claims. `run_python` closes that gap: the answering model writes a
+short Python program, an AWS Lambda function runs it, and the model answers from what it printed.
+
+```python
+from escalator.tools import make_run_python
+
+escalator = Escalator(TierRouter(decider), AdequacyGate(decider), tools=[make_run_python()])
+```
+
+It is an ordinary Strands `@tool` ([`escalator/tools.py`](escalator/tools.py)), so it plugs into
+any Strands agent: `Agent(model=..., tools=[make_run_python()])`. The sandbox
+([`lambda/run_python/handler.py`](lambda/run_python/handler.py)) runs each program in a child
+process with an empty environment, so the code can't read the function's AWS credentials, and
+stops it after 5 seconds. The function's role can only write CloudWatch logs.
+
+**Set up** (once). Your AWS user needs permission to create IAM roles and Lambda functions, for
+example the `AWSLambda_FullAccess` and `IAMFullAccess` managed policies; you can remove
+`IAMFullAccess` afterwards, since running the tool only needs `lambda:InvokeFunction`.
+
+```bash
+python deploy/deploy_run_python.py           # creates the role and function, then runs print(6 * 7)
+escalator --tool "How many prime numbers are there below 10,000?"
+python bench/run_tool_bench.py               # 18 questions with exact answers, tool off vs on
+```
+
 ## Notebook
 
 [`notebooks/escalator_walkthrough.ipynb`](notebooks/escalator_walkthrough.ipynb) walks through the
@@ -227,6 +255,8 @@ escalator/pricing.py    Bedrock prices for cost accounting
 escalator/cli.py        interactive demo with a decision trace
 bench/                  benchmark + held-out questions, runner, threshold sweep, saved results
 examples/               the pattern with no Strands or Bedrock
+lambda/run_python/       the AWS Lambda sandbox behind the run_python tool
+deploy/                 creates the Lambda function and its logs-only role
 notebooks/              walkthrough of the results, the sweep and the pattern (runs without AWS)
 docs/                   article, demo video script, trade-off chart, submission checklist
 ```

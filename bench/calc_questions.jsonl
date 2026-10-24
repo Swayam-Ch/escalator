@@ -1,0 +1,18 @@
+{"id": "calc-01", "kind": "finance", "prompt": "I invest $500 at the end of every month for 20 years at 7% annual interest, compounded monthly. What is the final balance in dollars, to the cent?", "answer": 260463.33, "tol": 0.02}
+{"id": "calc-02", "kind": "finance", "prompt": "What is the monthly payment on a $20,000 loan at 6% annual interest, repaid in equal monthly payments over 5 years? Give dollars to the cent.", "answer": 386.66, "tol": 0.011}
+{"id": "calc-03", "kind": "finance", "prompt": "$10,000 is invested at 4.5% annual interest compounded quarterly for 7 years. What is the final amount in dollars, to the cent?", "answer": 13678.52, "tol": 0.011}
+{"id": "calc-04", "kind": "arithmetic", "prompt": "What is 48,917 multiplied by 7,382?", "answer": 361105294, "tol": 0}
+{"id": "calc-05", "kind": "arithmetic", "prompt": "What is the square root of 1,234,567, to 3 decimal places?", "answer": 1111.111, "tol": 0.0006}
+{"id": "calc-06", "kind": "arithmetic", "prompt": "What is 2 to the power 100, modulo 97?", "answer": 16, "tol": 0}
+{"id": "calc-07", "kind": "arithmetic", "prompt": "What is the sum of the digits of 2 to the power 100?", "answer": 115, "tol": 0}
+{"id": "calc-08", "kind": "dates", "prompt": "How many days are there from March 14, 2026 to January 9, 2027? Count the difference between the two dates.", "answer": 301, "tol": 0}
+{"id": "calc-09", "kind": "dates", "prompt": "How many months in the years 2027 and 2028 combined have a Friday the 13th?", "answer": 2, "tol": 0}
+{"id": "calc-10", "kind": "counting", "prompt": "What is the sum of all prime numbers below 1,000?", "answer": 76127, "tol": 0}
+{"id": "calc-11", "kind": "counting", "prompt": "How many prime numbers are there below 10,000?", "answer": 1229, "tol": 0}
+{"id": "calc-12", "kind": "counting", "prompt": "How many times does the letter e appear, counting upper and lower case, in this sentence: \"Every elephant entered the eerie, empty theatre, eventually exhausted.\"", "answer": 18, "tol": 0}
+{"id": "calc-13", "kind": "counting", "prompt": "In how many different ways can you make 100 cents using any number of pennies, nickels, dimes and quarters?", "answer": 242, "tol": 0}
+{"id": "calc-14", "kind": "counting", "prompt": "What is the 60th Fibonacci number, if F(1) = 1 and F(2) = 1?", "answer": 1548008755920, "tol": 0}
+{"id": "calc-15", "kind": "code", "prompt": "What does this Python program print? print(sum(i*i for i in range(1, 101) if i % 3 == 0))", "answer": 112761, "tol": 0}
+{"id": "calc-16", "kind": "code", "prompt": "Starting from 27, repeatedly halve the number if it is even, or replace it with 3n + 1 if it is odd. How many steps does it take to reach 1?", "answer": 111, "tol": 0}
+{"id": "calc-17", "kind": "probability", "prompt": "What is the expected number of rolls of a fair six-sided die needed to see every face at least once? Give 4 decimal places.", "answer": 14.7, "tol": 0.0011}
+{"id": "calc-18", "kind": "statistics", "prompt": "What is the population standard deviation of 12, 15, 21, 9, 30, 18 and 27, to 4 decimal places?", "answer": 7.12, "tol": 0.0006}

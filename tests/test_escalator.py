@@ -47,7 +47,7 @@ class FakeModels:
     def __init__(self):
         self.calls: list[tuple[str, str]] = []
 
-    def __call__(self, model_id, system_prompt, prompt):
+    def __call__(self, model_id, system_prompt, prompt, tools=None):
         self.calls.append((model_id, system_prompt))
         return Reply(model_id, f"answer from {model_id}", 100, 50, 300.0 if model_id == SMALL else 2000.0)
 

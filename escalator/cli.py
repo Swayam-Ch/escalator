@@ -34,6 +34,10 @@ def render(outcome: Outcome, runs: list[dict] | None = None) -> str:
     r = outcome.route
     lines = [f"{CYAN}decider route{RESET}  -> {BOLD}{r.action}{RESET}  ({r.reason})  "
              f"{DIM}{r.signals} {r.latency_ms or 0:.0f}ms{RESET}"]
+    if outcome.check:
+        k = outcome.check
+        colour = GREEN if k.action == "accept" else YELLOW
+        lines.append(f"{CYAN}code check{RESET}     -> {colour}{BOLD}{k.action}{RESET}  ({k.reason})")
     if outcome.gate:
         g = outcome.gate
         colour = GREEN if g.action == "accept" else YELLOW
@@ -56,6 +60,9 @@ def main() -> int:
     parser.add_argument("--large-at", type=float, default=TierRouter.large_at, help="P(large) that skips the small draft")
     parser.add_argument("--strict", action="store_true", help="send code, calculations and advice to the large model")
     parser.add_argument("--tool", action="store_true", help="give the answering models the run_python tool (AWS Lambda)")
+    parser.add_argument("--verify", action="store_true",
+                        help="with the tool: ask the small model twice and keep its answer only if both runs agree "
+                             "with their code (implies --tool)")
     args = parser.parse_args()
 
     decider = Decider()
@@ -69,7 +76,8 @@ def main() -> int:
     runs: list[dict] = []
     escalator = Escalator(TierRouter(decider, sure=args.sure, large_at=args.large_at,
                                      expert_at=STRICT_EXPERT_AT if args.strict else None), AdequacyGate(decider),
-                          tools=[make_run_python(log=runs)] if args.tool else [])
+                          tools=[make_run_python(log=runs)] if args.tool or args.verify else [],
+                          verify=args.verify)
     if args.prompt:
         print(render(escalator(" ".join(args.prompt)), runs))
         return 0

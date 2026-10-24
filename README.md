@@ -293,6 +293,46 @@ Per-question results: [3 runs](bench/reported/tool-repeat3-summary.md) and
 [the first single run](bench/reported/tool-summary.md). This is a small set written for this test,
 so read the numbers as a direction, not a leaderboard.
 
+## Verify mode: check cheap answers against their code
+
+The benchmark above found that the 2B gate sends almost every calculation to the large model (17
+of 18 Nova drafts), even though Nova Micro with run_python is right about 78% of the time. The gate
+can tell whether an answer addresses the question, not whether a number is right. When the small
+model ran code, there is a better test: did the code back up the answer?
+
+`--verify` asks the small model twice, in parallel, with the tool, and keeps its answer only if
+
+1. **grounded**: each answer's final number is what its last successful program printed, and
+2. **agree**: the two independent runs printed the same result.
+
+Otherwise it escalates to the large model with the tool. Questions where no code ran go through the
+usual gate. The check is plain Python in [`escalator/verify.py`](escalator/verify.py), with no
+model call.
+
+```bash
+escalator --verify "What is 48,917 multiplied by 7,382?"
+python bench/run_tool_bench.py --repeat 3 --models large,verify
+```
+
+```
+decider route  -> large  (P(large) 0.92 >= 0.82)
+code check     -> accept  (two runs printed 361105294 and the answer matches)
+```
+
+**Replay on the saved runs** (not a live run yet). Pairing up the three Nova Micro + run_python
+answers to each question from `bench/reported/tool-repeat3-results.jsonl`, and using the Claude
+Haiku + run_python answer whenever the check fails:
+
+| | Correct | Kept on Nova Micro | LLM cost per 18 |
+| --- | ---: | ---: | ---: |
+| Claude Haiku 4.5 + run_python | 18/18 | | $0.0528 |
+| Verify mode (3 pairings) | 18/18 each | 12-13 | $0.0202-0.0239 |
+
+No wrong Nova answer got through in any pairing. Each check caught something real: calc-03 (the
+code printed 13678.52, the answer said 1367852), calc-05 (printed 1111.111, answered 1111), and
+calc-10, calc-13 and calc-17, where the two runs wrote different programs and printed different
+results.
+
 ## Notebook
 
 [`notebooks/run_python_tool.ipynb`](notebooks/run_python_tool.ipynb) covers the run_python tool:
@@ -325,6 +365,7 @@ escalator/decider.py    tiny urllib client for `strands-decider serve`
 escalator/agent.py      the cascade, built on Strands Agents + BedrockModel
 escalator/pricing.py    Bedrock prices for cost accounting
 escalator/cli.py        interactive demo with a decision trace
+escalator/verify.py     verify mode: accept a cheap answer only if two runs of its code agree with it
 bench/                  benchmark + held-out questions, runner, threshold sweep, saved results
 examples/               the pattern with no Strands or Bedrock
 lambda/run_python/       the AWS Lambda sandbox behind the run_python tool

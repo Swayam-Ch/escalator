@@ -4,9 +4,10 @@
     python bench/run_tool_bench.py --limit 3              # quick check
     python bench/run_tool_bench.py --repeat 3             # ask everything 3 times, report the spread
     python bench/run_tool_bench.py --models escalator     # the whole agent: decider route, model + tool, gate
+    python bench/run_tool_bench.py --models verify        # the whole agent in verify mode (tool on only)
 
 Every question has an exact answer, so correctness is checked by code, not by an LLM judge.
-`--models escalator` needs the decider running (see README "Quick start").
+`--models escalator` and `verify` need the decider running (see README "Quick start").
 Writes bench/results/tools-<timestamp>/results.jsonl and summary.md.
 """
 
@@ -28,6 +29,8 @@ from escalator.agent import LARGE_MODEL, SMALL_MODEL, SYSTEM_PROMPT, bedrock_cal
 from escalator.tools import make_run_python  # noqa: E402
 
 ESCALATOR = "escalator"   # stands in for a model id: the full cascade, with whichever models it routes to
+VERIFY = "escalator-verify"   # the same, with two small drafts checked against their code
+AGENTS = (ESCALATOR, VERIFY)
 ANSWER_FORMAT = (
     "End your reply with a final line in the form ANSWER: <number>, with no units, currency "
     "signs or thousands separators."
@@ -87,12 +90,13 @@ def summarise(rows: list[dict], configs: list[tuple[str, bool]]) -> str:
             f"${sum(r['cost'] for r in mine) / len(reps):.6f} | "
             f"{statistics.median(r['latency_ms'] for r in mine):.0f} ms | {used} | "
             f"{sum(r['tool_calls'] for r in mine)} | {sum(r['predicted'] is None for r in mine)} |")
-    paths = [(tool, Counter(r["path"] for r in rows if r["model"] == ESCALATOR and r["tool"] == tool))
-             for tool in (False, True)]
-    if any(c for _, c in paths):
-        out += ["", "Escalator routes: " + "; ".join(
-            f"tool {'on' if tool else 'off'}: " + ", ".join(f"{k} {v}" for k, v in sorted(c.items()))
-            for tool, c in paths if c)]
+    for agent in AGENTS:
+        paths = [(tool, Counter(r["path"] for r in rows if r["model"] == agent and r["tool"] == tool))
+                 for tool in (False, True)]
+        if any(c for _, c in paths):
+            out += ["", f"{agent} routes: " + "; ".join(
+                f"tool {'on' if tool else 'off'}: " + ", ".join(f"{k} {v}" for k, v in sorted(c.items()))
+                for tool, c in paths if c)]
     ids = list(dict.fromkeys(r["id"] for r in rows))
     labels = [f"{short(m)} {'+tool' if t else ''}".strip() for m, t in configs]
     out += ["", "## Per question", "", "| Question | Answer | " + " | ".join(labels) + " |",
@@ -113,7 +117,7 @@ def summarise(rows: list[dict], configs: list[tuple[str, bool]]) -> str:
     return "\n".join(out) + "\n"
 
 
-def build_escalator(tools: list):
+def build_escalator(tools: list, verify: bool = False):
     from escalator.agent import Escalator
     from escalator.decider import Decider
     from escalator.patterns import AdequacyGate, TierRouter
@@ -121,25 +125,29 @@ def build_escalator(tools: list):
     decider = Decider()
     decider.health()  # fail early if the decider isn't running
     return Escalator(TierRouter(decider), AdequacyGate(decider), call=with_answer_format(bedrock_call),
-                     tools=tools)
+                     tools=tools, verify=verify)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--questions", default=ROOT / "bench" / "calc_questions.jsonl", type=Path)
-    parser.add_argument("--models", default="small,large", help="comma list of small, large, escalator")
+    parser.add_argument("--models", default="small,large", help="comma list of small, large, escalator, verify")
     parser.add_argument("--repeat", type=int, default=1, help="ask every question this many times")
     parser.add_argument("--limit", type=int)
     args = parser.parse_args()
 
     questions = [json.loads(line) for line in args.questions.read_text().splitlines() if line.strip()]
     questions = questions[: args.limit] if args.limit else questions
-    models = [{"small": SMALL_MODEL, "large": LARGE_MODEL, ESCALATOR: ESCALATOR}[m] for m in args.models.split(",")]
-    configs = [(model, tool) for model in models for tool in (False, True)]
+    models = [{"small": SMALL_MODEL, "large": LARGE_MODEL, ESCALATOR: ESCALATOR, "verify": VERIFY}[m]
+              for m in args.models.split(",")]
+    configs = [(model, tool) for model in models for tool in (False, True) if tool or model != VERIFY]
     runs: list[dict] = []
     run_python = make_run_python(log=runs)
-    escalators = {tool: build_escalator([run_python] if tool else []) for tool in (False, True)} \
-        if ESCALATOR in models else {}
+    escalators = {}
+    if ESCALATOR in models:
+        escalators.update({(ESCALATOR, tool): build_escalator([run_python] if tool else []) for tool in (False, True)})
+    if VERIFY in models:
+        escalators[(VERIFY, True)] = build_escalator([run_python], verify=True)
 
     out_dir = ROOT / "bench" / "results" / time.strftime("tools-%Y%m%d-%H%M%S")
     out_dir.mkdir(parents=True)
@@ -150,8 +158,8 @@ def main() -> int:
                 row = {**q, "model": model, "tool": tool, "rep": rep, "path": None, "final_model": model}
                 runs.clear()
                 try:
-                    if model == ESCALATOR:
-                        outcome = escalators[tool](q["prompt"])
+                    if model in AGENTS:
+                        outcome = escalators[(model, tool)](q["prompt"])
                         text, cost, latency = outcome.answer, outcome.cost_usd, outcome.latency_ms
                         calls = sum(r.tool_calls for r in outcome.replies)
                         row.update(path=outcome.path, final_model=outcome.final_model)
